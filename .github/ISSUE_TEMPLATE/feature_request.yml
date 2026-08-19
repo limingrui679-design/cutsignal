@@ -1,0 +1,22 @@
+name: Feature request
+description: Propose a bounded analytical, adapter, or product improvement.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision or failure mode
+      description: What user decision would this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and assumptions
+      description: Include primary references and data-license boundaries when applicable.
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy and safety impact
+      description: Explain new data, permissions, or advice-like wording.

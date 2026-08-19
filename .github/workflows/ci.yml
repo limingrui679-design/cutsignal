@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+      - name: Verify checkout
+        run: python scripts/verify_project.py
+      - name: Require 100-point engineering score
+        run: python scripts/score_project.py
+      - name: Upload evidence
+        if: always() && matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutsignal-verification
+          path: |
+            artifacts/verification.json
+            artifacts/score.json
+            artifacts/SCORECARD.md
+            artifacts/coverage.json
+            artifacts/e2e/summary.json

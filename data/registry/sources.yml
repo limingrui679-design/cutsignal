@@ -1,0 +1,31 @@
+schema_version: 1
+sources:
+  - id: apple-health-user-export
+    role: optional_private_input
+    bundled: false
+    license_or_terms: user-controlled export; Apple terms apply
+    adapter: cutsignal.importers.apple_health
+    caveat: multi-device additive measures require reconciliation
+  - id: usda-fooddata-central
+    role: optional_food_metadata
+    bundled: false
+    homepage: https://fdc.nal.usda.gov/api-guide/
+    license_or_terms: public domain / CC0
+    caveat: user must supply local price and serving assumptions
+  - id: open-food-facts
+    role: optional_food_metadata
+    bundled: false
+    homepage: https://world.openfoodfacts.org/data
+    license_or_terms: ODbL and associated content licenses
+    caveat: crowdsourced values may be incomplete or inaccurate
+  - id: openpowerlifting
+    role: optional_competition_benchmark
+    bundled: false
+    homepage: https://openpowerlifting.gitlab.io/opl-csv/
+    license_or_terms: meet data dedicated to the public domain
+    caveat: competition weigh-ins are not longitudinal fat-loss ground truth
+  - id: cutsignal-synthetic-demo
+    role: bundled_test_and_demo
+    bundled: generated_deterministically
+    license_or_terms: MIT with project code
+    caveat: plausible software fixture, not a population sample

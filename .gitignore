@@ -1,0 +1,46 @@
+# Private or generated health data
+data/raw/
+data/private/
+data/imported/
+apple_health_export/
+export.xml
+export.zip
+*.health.zip
+*.hevy.csv
+*.strong.csv
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.toml
+.streamlit/secrets.toml
+
+# Generated artifacts
+artifacts/
+reports/private/
+quality/evidence/
+*.parquet
+*.duckdb
+*.db
+
+# Python/tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
