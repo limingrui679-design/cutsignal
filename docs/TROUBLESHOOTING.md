@@ -20,6 +20,7 @@ versions, not health rows or secrets.
 | Diet optimization is infeasible | No menu satisfies all declared hard bounds | Review solver explanation; relax one user-selected constraint at a time; never hide infeasibility |
 | `feasible_time_limit` with a nonzero gap | A validated incumbent was found before optimality was proved | Treat feasibility and objective optimality separately; increase the time limit if objective quality matters |
 | Dependency audit times out | OSV/network service was unavailable | Retry later; do not describe the failed audit as “no vulnerabilities” |
+| Dependency audit names `setuptools` | A Python bootstrap tool in the active environment is vulnerable even if CutSignal does not import it | Use a clean venv and run `python -m pip install --upgrade pip 'setuptools>=83,<85'`; do not ignore an environment package |
 | Full verifier appears slow | It creates a fresh venv, installs a wheel, runs UI/E2E/cases, and audits dependencies | Follow printed phase progress; preserve the first failing gate and its output |
 | Share-safe report still feels identifying | Minimization does not guarantee anonymity | Do not share it; manually review derived categories and context |
 

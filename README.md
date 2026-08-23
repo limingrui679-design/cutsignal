@@ -47,7 +47,7 @@ git clone https://github.com/limingrui679-design/cutsignal.git
 cd cutsignal
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-python -m pip install --upgrade pip
+python -m pip install --upgrade pip 'setuptools>=83,<85'
 python -m pip install -e '.[ui]'
 
 cutsignal doctor

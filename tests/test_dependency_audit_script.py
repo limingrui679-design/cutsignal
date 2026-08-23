@@ -19,7 +19,10 @@ def test_dependency_audit_payload_distinguishes_clean_and_vulnerable_results() -
             {
                 "name": "alpha",
                 "version": "1.0",
-                "vulns": [{"id": "OSV-TEST-1", "aliases": ["CVE-TEST"], "fix_versions": ["1.1"]}],
+                "vulns": [
+                    {"id": "OSV-TEST-1", "aliases": ["CVE-TEST"], "fix_versions": ["1.1"]},
+                    {"id": "OSV-TEST-1", "aliases": ["GHSA-TEST"], "fix_versions": ["1.2"]},
+                ],
             }
         ]
     }
@@ -31,8 +34,8 @@ def test_dependency_audit_payload_distinguishes_clean_and_vulnerable_results() -
             "dependency": "alpha",
             "installed_version": "1.0",
             "id": "OSV-TEST-1",
-            "aliases": ["CVE-TEST"],
-            "fix_versions": ["1.1"],
+            "aliases": ["CVE-TEST", "GHSA-TEST"],
+            "fix_versions": ["1.1", "1.2"],
         }
     ]
 

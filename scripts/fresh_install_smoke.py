@@ -14,6 +14,7 @@ import venv
 from pathlib import Path
 
 COMMAND_TIMEOUT_SECONDS = 600
+SECURE_SETUPTOOLS_SPEC = "setuptools>=83,<85"
 
 
 def _run(name: str, command: list[str], cwd: Path) -> dict[str, object]:
@@ -65,6 +66,20 @@ def main() -> int:
         python = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
         checks = [
             _run(
+                "bootstrap_tooling",
+                [
+                    str(python),
+                    "-m",
+                    "pip",
+                    "install",
+                    "--upgrade",
+                    "--disable-pip-version-check",
+                    "pip",
+                    SECURE_SETUPTOOLS_SPEC,
+                ],
+                root,
+            ),
+            _run(
                 "wheel_install",
                 [
                     str(python),
@@ -102,6 +117,21 @@ def main() -> int:
                 root,
             ),
         ]
+        installed_distributions = json.loads(str(checks[-1]["stdout"]))
+        setuptools_version = next(
+            (
+                str(distribution["version"])
+                for distribution in installed_distributions
+                if str(distribution.get("name", "")).casefold() == "setuptools"
+            ),
+            "",
+        )
+        setuptools_major = int(setuptools_version.split(".", maxsplit=1)[0]) if setuptools_version else 0
+        if not 83 <= setuptools_major < 85:
+            raise RuntimeError(
+                f"isolated environment setuptools {setuptools_version or 'missing'} does not satisfy "
+                f"{SECURE_SETUPTOOLS_SPEC}"
+            )
 
     payload = {
         "schema_version": 1,
@@ -109,6 +139,10 @@ def main() -> int:
         "wheel": wheel.name,
         "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(),
         "isolated_virtual_environment": True,
+        "secure_build_tool": {
+            "requirement": SECURE_SETUPTOOLS_SPEC,
+            "installed_version": setuptools_version,
+        },
         "virtual_environment_seconds": venv_duration,
         "total_duration_seconds": round(time.monotonic() - overall_started, 3),
         "checks": checks,

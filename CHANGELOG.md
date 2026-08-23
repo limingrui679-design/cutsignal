@@ -27,6 +27,9 @@ versioning while the public API stabilizes.
 - Food API helpers now validate path identifiers and enforce a streamed 5 MiB response limit.
 - CI now prints failed verifier output directly and preserves dependency-audit evidence for every
   supported Python matrix.
+- Python 3.11 and isolated-install environments now replace vulnerable bootstrap `setuptools`
+  versions with the audited `>=83,<85` range; duplicate service records share one package/advisory
+  finding.
 
 ### Security
 

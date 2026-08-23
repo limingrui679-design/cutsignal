@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / ".github" / "workflows"
 USES = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s#]+)")
 PINNED = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+@[0-9a-f]{40}$")
+SECURE_SETUPTOOLS_SPEC = "setuptools>=83,<85"
 
 
 def main() -> int:
@@ -32,10 +33,19 @@ def main() -> int:
             errors.append(f"Dependabot does not cover {ecosystem}")
     if not references:
         errors.append("no GitHub Action references found")
+    required_secure_bootstraps = {"ci.yml": 2, "security.yml": 1}
+    for workflow_name, expected_count in required_secure_bootstraps.items():
+        workflow_content = (WORKFLOWS / workflow_name).read_text(encoding="utf-8")
+        observed_count = workflow_content.count(SECURE_SETUPTOOLS_SPEC)
+        if observed_count < expected_count:
+            errors.append(
+                f"{workflow_name} has {observed_count} secure setuptools bootstraps; expected {expected_count}"
+            )
     if errors:
         raise SystemExit("\n".join(errors))
     print(
-        f"workflow supply chain: {len(references)} immutable action references; pip/github-actions updates configured"
+        f"workflow supply chain: {len(references)} immutable action references; pip/github-actions updates and "
+        f"{sum(required_secure_bootstraps.values())} secure build-tool bootstraps configured"
     )
     return 0
 

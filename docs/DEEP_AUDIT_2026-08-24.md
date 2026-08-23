@@ -20,7 +20,10 @@ migration-shaped case, and fragmented onboarding/data documentation. The upgrade
 fixed the original P1 set and passed the complete verifier. The first public CI run then exposed a
 new dependency-audit observability/reliability P1. Its implementation regression passed every
 implementation gate while the deliberately open finding remained the sole failed status gate; the
-finding was closed only after that evidence was recorded.
+finding was closed only after that evidence was recorded. The remediated public run then did its
+job: preserved Python 3.11 evidence identified a genuinely vulnerable runner-bootstrap `setuptools`
+version and opened a separate P1. Its implementation regression then proved the secure bootstrap
+and retained the finding as the sole failed status gate before closure.
 
 ## B. Scope and inferred users
 
@@ -90,6 +93,7 @@ not copied.
 | DA-P1-014 | P1 | scoring consumed mutable generated files and the distribution directory could expose a stale wheel | reset verifier-owned outputs, require one rebuilt wheel, bind seven artifacts by SHA-256/size, and match the installed-wheel hash | complete implementation regression and 7/7 manifest gate passed; status gate then closed |
 | DA-P1-015 | P1 | public clone/package/citation/issue/security URLs could drift after repository creation | one API-verified repository identity across six metadata and support surfaces | complete implementation regression passed; status gate then closed |
 | DA-P1-016 | P1 | Python 3.11 CI's one-shot OSV audit captured its failure output and retained artifacts only for Python 3.12 | transport-only bounded retry; vulnerability/tool failures fail immediately; direct failure tails; hash-bound audit evidence; artifact upload for every Python matrix | complete implementation regression and 8/8 manifest passed; status gate then closed |
+| DA-P1-017 | P1 | observable Python 3.11 audit found runner-bootstrap `setuptools 79.0.1` affected by PYSEC-2026-3447 | secure `setuptools >=83,<85` bootstrap in CI/security/docs/isolated install; machine bound check; duplicate package/advisory records merged without suppression | complete implementation regression and 8/8 manifest passed; status gate then closed |
 | DA-P2-001 | P2 | console evaluation output hid classification failures unless the JSON was opened | print accuracy/FP/FN and document 83.3% coverage plus three linked-method false negatives | full verifier passed |
 | DA-P2-002 | P2 | documented root privacy command failed on generated local evidence after verification | separate broad-walk generated/cache exclusions from exact publishable-checkout enumeration | full verifier passed |
 
@@ -102,6 +106,10 @@ public-metadata regression passed every implementation gate before its status wa
 DA-P1-016 followed the same two-stage rule: 22 of 23 executable checks, privacy, documentation, and
 the 8/8 manifest passed while its deliberately pending audit-status gate was the only failure. It
 was then closed; targeted tests or one successful OSV request alone would not have qualified.
+The next public run proved that observability was effective by exposing DA-P1-017. Its implementation
+regression passed 22 of 23 executable checks, privacy, documentation, and 8/8 artifacts while its
+pending status was the only failure; it was closed only after `setuptools 84.0.0` was recorded in
+the isolated-install evidence.
 
 ## F. Vertical method and case depth
 
@@ -139,8 +147,8 @@ was then closed; targeted tests or one successful OSV request alone would not ha
 
 ## H. Verification status
 
-The post-closure complete verifier passed all 23 executable checks plus privacy, required
-documentation, and the 8/8 artifact-manifest gate on macOS/Python 3.12.13. It recorded 65 passing
+The clean `059eb663dcaad9c565932ae83e13a2fb52ad0942` local checkout passed all 23 executable checks
+plus privacy, required documentation, and the 8/8 artifact-manifest gate on macOS/Python 3.12.13. It recorded 65 passing
 tests, 91.3095% combined coverage, 93.2534% statement coverage, and 83.8150% branch-only coverage; a
 wheel and source
 distribution build; an isolated wheel install; `pip check`; OSV dependency audit with no known
@@ -148,7 +156,8 @@ vulnerabilities found; 9/9 cases; Streamlit AppTest; and the 112-day E2E workflo
 hash matched the isolated-install record. The dependency-audit evidence records pip-audit 2.10.1,
 Python 3.12.13, 90 audited dependencies, one attempt, and zero reported vulnerabilities. The exact
 publishable checkout scan covered 108 files and returned zero privacy findings. A post-closure
-complete-verifier pass was recorded only after the two-stage finding closure.
+complete-verifier pass was recorded only after the two-stage DA-P1-016 closure. The local audit
+inventory did not contain `setuptools`, so that pass did not establish Python 3.11 bootstrap safety.
 
 The 12-run synthetic grid produced linked-particle MAE 0.0557 kg/week, 83.3% interval coverage,
 Brier 0.0778, 75.0% plateau classification accuracy, and three false negatives; OLS produced MAE
@@ -156,12 +165,16 @@ Brier 0.0778, 75.0% plateau classification accuracy, and three false negatives; 
 aggregates describe only the fixed internal scenario grid and are not external calibration. The
 screenshots were regenerated and visually inspected locally.
 
-The exact `63299166aee39f2251e93b395eab1ae58805ddcf` checkout was pushed and matched remote `main`.
-Its Security workflow passed, while its CI workflow failed only in the Python 3.11 exact-checkout
-step. Because the old verifier captured the audit output and uploaded artifacts only for Python
-3.12, that run did not establish whether the 3.11 failure was a vulnerability, transport failure,
-or tool failure. The remediation's post-closure local verifier is complete, but the remediated
-commit's push and replacement remote Actions are still pending.
+The same `059eb663dcaad9c565932ae83e13a2fb52ad0942` SHA was pushed and matched remote `main`. Security,
+macOS, Windows, Python 3.12, and Python 3.13 succeeded. Python 3.11 failed only its dependency audit,
+uploaded the failure evidence, and identified `setuptools 79.0.1` with PYSEC-2026-3447 / CVE-2026-59890
+and a fixed version of 83.0.0. The audit correctly did not retry or suppress the finding. Secure
+bootstrap remediation passed its implementation regression before its post-closure run began.
+
+The remediated post-closure verifier then passed all 23 executable checks plus privacy,
+documentation, and the 8/8 artifact manifest. Its isolated-install evidence records
+`setuptools 84.0.0` against the enforced `>=83,<85` requirement. This is internal machine evidence;
+the replacement Python 3.11 Actions result remains a separate publication gate.
 
 ## I. Independent score
 
@@ -173,13 +186,13 @@ commit's push and replacement remote Actions are still pending.
 | Evaluation and cases | 10 | 6 | 9 | 12 runs, OLS baseline, ninth migration case, retained failures |
 | Architecture/API/CLI | 9 | 9 | 9 | already strong; doctor improves UX but not architecture score |
 | Testing/reliability | 9 | 8 | 9 | regression, malformed/oversize, evaluation, and accessibility tests |
-| Reproducibility/release | 9 | 6 | 7 | richer install evidence and pinned Actions; remote still unverified |
+| Reproducibility/release | 9 | 6 | 7 | secure bootstrap passed locally; remediated remote CI remains pending |
 | UX/demo/accessibility | 7 | 5 | 7 | doctor, tutorial, report/table/chart accessibility |
 | Documentation/onboarding | 7 | 6 | 7 | data card, benchmarks, tutorial, troubleshooting, support |
-| Privacy/security | 5 | 5 | 5 | strong baseline retained; no external assessment claimed |
+| Privacy/security | 5 | 5 | 5 | audit failed closed; fixed build-tool bound and isolated version are machine verified |
 | Governance/maintenance | 4 | 3 | 4 | support boundary and pinned/dependabot-managed workflows |
 | External validity/use | 6 | 0 | 0 | no qualifying external evidence |
-| **Total** | **100** | **73** | **87/100 local** | **+14; complete local verifier passed** |
+| **Total** | **100** | **73** | **87/100 local** | **+14; secure-bootstrap post-closure verifier passed** |
 
 The registry `data/registry/deep_audit.yml` validates the arithmetic, evidence paths, benchmark mix,
 caps, and absence of open P0/P1. If the remediated exact commit is pushed, matches remote `main`,
@@ -204,8 +217,9 @@ deployment, outcomes, impact, or stars.
 
 ### Current locally fixable
 
-- No implementation P0/P1 remains after the complete local verifier. The authorized publication
-  workflow still needs an exact-SHA push and successful terminal Actions before claiming public CI.
+- No implementation P0/P1 remains after the complete local verifier. Push the secure-bootstrap
+  commit and verify its exact remote SHA and terminal Actions; local evidence cannot substitute for
+  the Python 3.11 matrix.
 
 ### P2/P3 with insufficient current cost/benefit
 

@@ -59,7 +59,7 @@ def summarize_payload(payload: object) -> tuple[int, list[dict[str, Any]]]:
         raise ValueError("pip-audit JSON must contain a dependencies list")
 
     dependencies = payload["dependencies"]
-    vulnerabilities: list[dict[str, Any]] = []
+    vulnerability_index: dict[tuple[str, str, str], dict[str, Any]] = {}
     for dependency in dependencies:
         if not isinstance(dependency, dict):
             raise ValueError("each pip-audit dependency must be an object")
@@ -69,18 +69,25 @@ def summarize_payload(payload: object) -> tuple[int, list[dict[str, Any]]]:
         for vulnerability in raw_vulnerabilities:
             if not isinstance(vulnerability, dict) or not isinstance(vulnerability.get("id"), str):
                 raise ValueError("each vulnerability must be an object with a string id")
-            aliases = vulnerability.get("aliases", [])
-            fix_versions = vulnerability.get("fix_versions", [])
-            vulnerabilities.append(
+            dependency_name = str(dependency.get("name") or "unknown")
+            installed_version = str(dependency.get("version") or "unknown")
+            vulnerability_id = vulnerability["id"]
+            key = (dependency_name, installed_version, vulnerability_id)
+            record = vulnerability_index.setdefault(
+                key,
                 {
-                    "dependency": dependency.get("name"),
-                    "installed_version": dependency.get("version"),
-                    "id": vulnerability["id"],
-                    "aliases": aliases if isinstance(aliases, list) else [],
-                    "fix_versions": fix_versions if isinstance(fix_versions, list) else [],
-                }
+                    "dependency": dependency_name,
+                    "installed_version": installed_version,
+                    "id": vulnerability_id,
+                    "aliases": [],
+                    "fix_versions": [],
+                },
             )
-    return len(dependencies), vulnerabilities
+            for field in ("aliases", "fix_versions"):
+                values = vulnerability.get(field, [])
+                if isinstance(values, list):
+                    record[field] = sorted({*record[field], *(value for value in values if isinstance(value, str))})
+    return len(dependencies), list(vulnerability_index.values())
 
 
 def dependency_inventory(payload: object) -> list[dict[str, Any]]:
