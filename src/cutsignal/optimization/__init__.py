@@ -2,8 +2,14 @@
 
 from cutsignal.optimization.diet import (
     build_pareto_frontier,
+    build_pareto_frontier_diagnostics,
     optimize_weekly_plan,
     validate_weekly_plan,
 )
 
-__all__ = ["build_pareto_frontier", "optimize_weekly_plan", "validate_weekly_plan"]
+__all__ = [
+    "build_pareto_frontier",
+    "build_pareto_frontier_diagnostics",
+    "optimize_weekly_plan",
+    "validate_weekly_plan",
+]

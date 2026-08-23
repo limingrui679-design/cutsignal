@@ -60,6 +60,20 @@ class PlanPoint(BaseModel):
     unique_foods: int
 
 
+class TradeoffProfileFailure(BaseModel):
+    label: str
+    error_type: str
+    reason: str
+
+
+class ParetoFrontierResult(BaseModel):
+    """Sampled points plus visible failures from optional profile solves."""
+
+    points: list[PlanPoint]
+    attempted_profiles: int
+    failures: list[TradeoffProfileFailure]
+
+
 class PlanSensitivityResult(BaseModel):
     scenario: str
     feasible: bool
@@ -267,6 +281,25 @@ def _coefficient(food: FoodItem, field: str, mode: str, robust: bool) -> float:
     if not robust:
         return value
     uncertainty = food.nutrient_uncertainty
+    if mode == "lower":
+        return value * (1 - uncertainty)
+    if mode == "upper":
+        return value * (1 + uncertainty)
+    raise ValueError(f"unknown robust coefficient mode: {mode}")
+
+
+def _coefficient_with_extra_uncertainty(
+    food: FoodItem,
+    field: str,
+    mode: str,
+    *,
+    robust: bool,
+    extra_points: float,
+) -> float:
+    """Apply an additive percentage-point stress to the declared uncertainty."""
+    value = float(getattr(food, field))
+    modeled = food.nutrient_uncertainty if robust else 0.0
+    uncertainty = min(modeled + extra_points, 0.99)
     if mode == "lower":
         return value * (1 - uncertainty)
     if mode == "upper":
@@ -598,9 +631,16 @@ def _stress_test(
             ) -> float:
                 total = 0.0
                 for food, servings in selected_items:
-                    base = _coefficient(food, field, mode, constraints.robust_nutrition)
-                    shock = 1 - nutrition_delta if mode == "lower" else 1 + nutrition_delta
-                    total += base * shock * servings
+                    total += (
+                        _coefficient_with_extra_uncertainty(
+                            food,
+                            field,
+                            mode,
+                            robust=constraints.robust_nutrition,
+                            extra_points=nutrition_delta,
+                        )
+                        * servings
+                    )
                 return total
 
             slacks["calories_min"].append(robust_total("calories_kcal", "lower") - constraints.calories_min)
@@ -622,8 +662,13 @@ def _stress_test(
             for nutrient, required in constraints.micronutrient_min.items():
                 amount = sum(
                     float(food.micronutrients.get(nutrient, 0.0))
-                    * (1 - food.nutrient_uncertainty if constraints.robust_nutrition else 1)
-                    * (1 - nutrition_shock)
+                    * (
+                        1
+                        - min(
+                            (food.nutrient_uncertainty if constraints.robust_nutrition else 0.0) + nutrition_shock,
+                            0.99,
+                        )
+                    )
                     * servings
                     for food, servings in selected
                 )
@@ -822,13 +867,29 @@ def optimize_weekly_plan(
     )
 
 
-def build_pareto_frontier(
+def _plan_point(label: str, plan: DietPlanResult, foods: list[FoodItem]) -> PlanPoint:
+    servings = sum(entry.servings for entry in plan.entries)
+    mean_preference = sum(
+        item.preference_score * sum(entry.servings for entry in plan.entries if entry.food_id == item.food_id)
+        for item in foods
+    ) / max(servings, 1)
+    return PlanPoint(
+        label=label,
+        total_cost=plan.total_cost,
+        total_prep_minutes=sum(item.prep_minutes for item in plan.daily),
+        mean_preference=mean_preference,
+        unique_foods=plan.unique_foods,
+    )
+
+
+def build_pareto_frontier_diagnostics(
     foods: list[FoodItem],
     constraints: DietConstraints,
     *,
     time_limit_seconds: float = 5.0,
-) -> list[PlanPoint]:
-    """Return a sampled non-dominated set from five explicit weighted objectives.
+    baseline_plan: DietPlanResult | None = None,
+) -> ParetoFrontierResult:
+    """Return sampled non-dominated points and every optional-profile failure.
 
     This is not an exhaustive Pareto frontier. Weighted-sum sampling can miss
     non-convex or unsampled trade-offs in a discrete feasible region.
@@ -847,26 +908,30 @@ def build_pareto_frontier(
         "simple": DietObjectiveWeights(cost=0.5, prep_time=0.2, calorie_deviation=0.01, preference=0.5, food_count=2.0),
     }
     points: list[PlanPoint] = []
+    failures: list[TradeoffProfileFailure] = []
     seen: set[tuple[float, float, float, int]] = set()
     for label, weights in profiles.items():
-        plan = optimize_weekly_plan(
-            foods,
-            constraints,
-            weights,
-            time_limit_seconds=time_limit_seconds,
-        )
-        servings = sum(entry.servings for entry in plan.entries)
-        mean_preference = sum(
-            item.preference_score * sum(entry.servings for entry in plan.entries if entry.food_id == item.food_id)
-            for item in foods
-        ) / max(servings, 1)
-        point = PlanPoint(
-            label=label,
-            total_cost=plan.total_cost,
-            total_prep_minutes=sum(item.prep_minutes for item in plan.daily),
-            mean_preference=mean_preference,
-            unique_foods=plan.unique_foods,
-        )
+        try:
+            plan = (
+                baseline_plan
+                if label == "balanced" and baseline_plan is not None
+                else optimize_weekly_plan(
+                    foods,
+                    constraints,
+                    weights,
+                    time_limit_seconds=time_limit_seconds,
+                )
+            )
+        except OptimizationInfeasibleError as exc:
+            failures.append(
+                TradeoffProfileFailure(
+                    label=label,
+                    error_type=type(exc).__name__,
+                    reason=str(exc),
+                )
+            )
+            continue
+        point = _plan_point(label, plan, foods)
         key = (
             round(point.total_cost, 4),
             round(point.total_prep_minutes, 4),
@@ -891,4 +956,25 @@ def build_pareto_frontier(
         )
         if not dominated:
             frontier.append(candidate)
-    return sorted(frontier, key=lambda item: (item.total_cost, item.total_prep_minutes))
+    return ParetoFrontierResult(
+        points=sorted(frontier, key=lambda item: (item.total_cost, item.total_prep_minutes)),
+        attempted_profiles=len(profiles),
+        failures=failures,
+    )
+
+
+def build_pareto_frontier(
+    foods: list[FoodItem],
+    constraints: DietConstraints,
+    *,
+    time_limit_seconds: float = 5.0,
+) -> list[PlanPoint]:
+    """Return compatible point-only output; use diagnostics to inspect skipped profiles."""
+    result = build_pareto_frontier_diagnostics(
+        foods,
+        constraints,
+        time_limit_seconds=time_limit_seconds,
+    )
+    if not result.points:
+        raise OptimizationInfeasibleError("no trade-off profile produced a validated incumbent")
+    return result.points

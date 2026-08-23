@@ -2,6 +2,9 @@
 
 CutSignal ships no third-party dataset and no personal export. The adapters below retrieve or parse
 data only when the user explicitly runs them.
+The dated machine-readable registry records each source's rolling/fixed version boundary, bundling
+state, license/terms, caveat, and implementation evidence. Run `python scripts/verify_sources.py` to
+validate it; URL reachability is not treated as evidence of data correctness.
 
 ## User-controlled health and training exports
 
@@ -17,6 +20,8 @@ data only when the user explicitly runs them.
 - [USDA FoodData Central API](https://fdc.nal.usda.gov/api-guide/) data are published by the United
   States Department of Agriculture. FoodData Central data are public domain/CC0. API keys stay in
   environment variables; default rate limits and terms may change, so consult the official guide.
+  CutSignal selects declared nutrient IDs, reads `unitName`, converts kJ to kcal and g/mg/µg mass
+  units explicitly, and rejects unsupported units instead of guessing from magnitude.
 - [Open Food Facts API](https://openfoodfacts.github.io/openfoodfacts-server/api/) records are
   crowdsourced. Database reuse is governed by ODbL and associated content licenses described on the
   [Open Food Facts data page](https://world.openfoodfacts.org/data). Completeness and accuracy are
@@ -24,12 +29,15 @@ data only when the user explicitly runs them.
 
 The user supplies price, serving, preference, allergen, and preparation assumptions. Neither source
 is evidence that a local product is available or safe for a particular person.
+Responses are streamed with a 5 MiB limit, and path identifiers are restricted to expected numeric
+forms. These controls do not establish upstream availability or correctness.
 
 ## Optional strength cohort
 
 [OpenPowerlifting bulk CSV](https://openpowerlifting.gitlab.io/opl-csv/) is optional and not bundled.
-The provider dedicates meet data to the public domain. The adapter stores URL, SHA-256, byte count,
-and license note beside a downloaded snapshot. Downloads are streamed through a same-directory
+The provider dedicates meet data to the public domain. The adapter stores URL, resolved URL,
+retrieval time, available ETag/Last-Modified values, SHA-256, byte count, and license note beside a
+downloaded snapshot. Downloads are streamed through a same-directory
 temporary file, capped at 2 GiB, and atomically replace the destination only after completion.
 
 Competition results are a performance benchmark only. Meet weigh-ins can involve acute weight cuts

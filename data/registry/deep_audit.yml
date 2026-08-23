@@ -1,0 +1,234 @@
+schema_version: 1
+audit_date: "2026-08-24"
+rubric_origin: independently_defined_for_this_audit
+supersedes: data/registry/strict_audit.yml
+baseline:
+  commit: bd876648a151030340aae413f6566d8af2d9eeb7
+  checkout_fingerprint: 114e1fc851e10b2ae60302f5678683b3afdfc9d9ec7a3209abcc320941b21900
+  score: 73
+  status: frozen_checkout_reproduced
+  evidence_note: Generated evidence is ignored by Git and retained locally under artifacts/deep-audit-baseline.
+current:
+  score: 87
+  status: local_verifier_passed_publication_pending
+  publication_state: not_established_in_this_registry
+  score_if_remote_sha_and_required_actions_are_verified: 88
+
+dimensions:
+  - id: positioning_boundaries
+    name: Positioning, target user, and decision boundaries
+    maximum: 8
+    baseline: 7
+    current: 8
+    evidence: [README.md, docs/LIMITATIONS.md, docs/BENCHMARKS.md]
+    remaining: none for the declared alpha scope
+  - id: data_provenance
+    name: Data contracts, provenance, quality, and leakage controls
+    maximum: 11
+    baseline: 7
+    current: 9
+    evidence: [docs/DATA_CARD.md, docs/DATA_SOURCES.md, src/cutsignal/importers/food.py]
+    remaining: no governed longitudinal outcome cohort or verified regional food panel
+  - id: method_depth
+    name: Statistical, optimization, and domain-method depth
+    maximum: 15
+    baseline: 11
+    current: 13
+    evidence: [docs/METHODS.md, docs/REFERENCES.md, data/registry/method_references.yml, src/cutsignal/evaluation.py, src/cutsignal/optimization/diet.py]
+    remaining: no external plateau calibration or controlled strength protocol
+  - id: evaluation_cases
+    name: Baselines, uncertainty, robustness, cases, and failure evidence
+    maximum: 10
+    baseline: 6
+    current: 9
+    evidence: [docs/VALIDATION.md, docs/CASEBOOK.md, tests/test_evaluation.py, tests/test_cases.py]
+    remaining: all bundled outcome evidence remains synthetic and internally governed
+  - id: architecture_api_cli
+    name: Architecture, public API, CLI, and extension boundaries
+    maximum: 9
+    baseline: 9
+    current: 9
+    evidence: [docs/ARCHITECTURE.md, src/cutsignal/cli.py, src/cutsignal/pipeline.py]
+    remaining: none for the declared local package scope
+  - id: testing_reliability
+    name: Testing, error handling, reliability, and bounded resources
+    maximum: 9
+    baseline: 8
+    current: 9
+    evidence: [tests/test_food_and_cohort.py, tests/test_pipeline_reporting_privacy.py, scripts/verify_project.py]
+    remaining: no long-duration production reliability evidence
+  - id: reproducibility_release
+    name: Reproducibility, packaging, portability, and public release evidence
+    maximum: 9
+    baseline: 6
+    current: 7
+    evidence: [scripts/fresh_install_smoke.py, .github/workflows/ci.yml, .github/workflows/security.yml]
+    remaining: public remote SHA and Actions are not established in this local evidence registry; no signed release
+  - id: ux_demo_accessibility
+    name: First-run UX, demo, visual design, and accessibility
+    maximum: 7
+    baseline: 5
+    current: 7
+    evidence: [docs/TUTORIAL.md, docs/TROUBLESHOOTING.md, src/cutsignal/app.py, src/cutsignal/reporting/html.py]
+    remaining: no independent usability or accessibility study
+  - id: docs_onboarding
+    name: Documentation architecture and onboarding
+    maximum: 7
+    baseline: 6
+    current: 7
+    evidence: [README.md, docs/TUTORIAL.md, docs/TROUBLESHOOTING.md, docs/BENCHMARKS.md, docs/REFERENCES.md]
+    remaining: no separately hosted documentation site
+  - id: privacy_security
+    name: Privacy and security controls
+    maximum: 5
+    baseline: 5
+    current: 5
+    evidence: [SECURITY.md, docs/PRIVACY.md, src/cutsignal/privacy.py, .github/workflows/security.yml]
+    remaining: heuristic scans and local controls are not an external security assessment
+  - id: governance_maintenance
+    name: Open-source governance and maintenance surface
+    maximum: 4
+    baseline: 3
+    current: 4
+    evidence: [CONTRIBUTING.md, CODE_OF_CONDUCT.md, SUPPORT.md, .github/dependabot.yml]
+    remaining: no multi-maintainer governance history
+  - id: external_validity_use
+    name: External validity, independent review, real use, and impact
+    maximum: 6
+    baseline: 0
+    current: 0
+    evidence: [docs/VALIDATION.md, docs/LIMITATIONS.md]
+    remaining: no qualifying external evidence exists
+
+benchmark_review:
+  accessed: "2026-08-24"
+  matrix: docs/BENCHMARKS.md
+  projects:
+    - {category: direct, name: FitTrackee, reference: v1.3.4, url: "https://github.com/SamR1/FitTrackee"}
+    - {category: direct, name: wger, reference: v2.6, url: "https://github.com/wger-project/wger"}
+    - {category: direct, name: openScale, reference: v3.1.2, url: "https://github.com/oliexdev/openScale"}
+    - {category: direct, name: OpenTracks, reference: v4.28.2, url: "https://codeberg.org/OpenTracksApp/OpenTracks"}
+    - {category: adjacent, name: ActivityWatch, reference: v0.13.2, url: "https://github.com/ActivityWatch/activitywatch"}
+    - {category: adjacent, name: ArviZ, reference: v1.3.0, url: "https://github.com/arviz-devs/arviz"}
+    - {category: adjacent, name: Evidently, reference: v0.7.21, url: "https://github.com/evidentlyai/evidently"}
+    - {category: adjacent, name: OR-Tools, reference: v9.15, url: "https://github.com/google/or-tools"}
+    - {category: adjacent, name: Open Food Facts, reference: v2.102.0, url: "https://github.com/openfoodfacts/openfoodfacts-server"}
+    - {category: exemplar, name: scikit-learn, reference: 1.9.0, url: "https://github.com/scikit-learn/scikit-learn"}
+    - {category: exemplar, name: pandas, reference: 3.0.5, url: "https://github.com/pandas-dev/pandas"}
+    - {category: exemplar, name: FastAPI, reference: 0.141.1, url: "https://github.com/fastapi/fastapi"}
+
+findings:
+  - id: DA-P1-001
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: USDA normalization guessed the energy unit from magnitude and could misread explicit low-kJ values.
+    resolution: Explicit nutrient IDs and units with kJ/kcal and mass conversion plus rejection tests.
+    evidence: [src/cutsignal/importers/food.py, tests/test_food_and_cohort.py]
+  - id: DA-P1-002
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: The nutrition stress scenario compounded 5 percent instead of adding the declared 5 percentage points.
+    resolution: One additive uncertainty helper now drives macro and micronutrient stress coefficients.
+    evidence: [src/cutsignal/optimization/diet.py, tests/test_diet_optimizer.py]
+  - id: DA-P1-003
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: The core trend method had no executable alternative baseline on declared known truth.
+    resolution: Fixed 12-run stress grid with a same-window OLS comparator and retained scenario failures.
+    evidence: [src/cutsignal/evaluation.py, tests/test_evaluation.py, docs/VALIDATION.md]
+  - id: DA-P1-004
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: Optional food endpoints accepted unsafe path identifiers and had no response-byte bound.
+    resolution: Numeric identifier allowlists and streamed 5 MiB response cap with malformed/oversize tests.
+    evidence: [src/cutsignal/importers/food.py, tests/test_food_and_cohort.py]
+  - id: DA-P1-005
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: The prior strict audit was stale and could anchor this audit to an inherited provisional score.
+    resolution: The prior review is preserved as historical and explicitly superseded by this independent rubric.
+    evidence: [docs/STRICT_AUDIT.md, docs/DEEP_AUDIT_2026-08-24.md]
+  - id: DA-P1-006
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: The Streamlit application test could fail during a valid cold start because its first-run bound was only 45 seconds.
+    resolution: Every AppTest phase has an explicit 120-second bound inside the verifier's 300-second outer limit.
+    evidence: [scripts/ui_smoke.py, scripts/verify_project.py]
+  - id: DA-P1-007
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: The UI default gave optional trade-off solves too little time and exposed a solver exception when no incumbent was found.
+    resolution: The default main solve is 8 seconds, trade-off profiles get at least 3 seconds, and expected domain failure becomes an actionable UI error.
+    evidence: [src/cutsignal/app.py, scripts/ui_smoke.py]
+  - id: DA-P1-008
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: A time-limited optional trade-off profile without an incumbent aborted an otherwise valid primary analysis.
+    resolution: The primary balanced plan is reused, optional failures are skipped without being hidden, and labels/types/reasons are serialized and displayed.
+    evidence: [src/cutsignal/optimization/diet.py, src/cutsignal/pipeline.py, tests/test_diet_optimizer.py, scripts/e2e_smoke.py]
+  - id: DA-P1-009
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: Named method families had no authoritative provenance map or explicit transfer boundary.
+    resolution: Ten primary or authoritative references now map each borrowed mechanism and what its citation cannot validate.
+    evidence: [docs/REFERENCES.md, data/registry/method_references.yml, scripts/verify_method_references.py]
+  - id: DA-P1-010
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: The publication scanner misclassified one DOI identifier and did not reject host-specific home paths.
+    resolution: Phone matching excludes URL paths, local home paths are rejected, audit metadata is sanitized, and both paths have regression tests.
+    evidence: [src/cutsignal/privacy.py, tests/test_pipeline_reporting_privacy.py, docs/DEEP_AUDIT_2026-08-24.md]
+  - id: DA-P1-011
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: The publication privacy scan omitted workflows and some top-level files from the publishable checkout.
+    resolution: Fingerprinting and privacy audit now share every tracked and non-ignored untracked checkout file.
+    evidence: [scripts/verify_project.py, src/cutsignal/privacy.py]
+  - id: DA-P1-012
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: Package, build metadata, citation metadata, and changelog versions could drift without a failing gate.
+    resolution: A dedicated gate compares all version surfaces and the installed distribution; fresh-install smoke repeats the runtime check.
+    evidence: [scripts/verify_versions.py, scripts/fresh_install_smoke.py, scripts/verify_project.py]
+  - id: DA-P1-013
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: Source records lacked explicit version or snapshot boundaries and had no machine validator.
+    resolution: Five sources declare access date, version/snapshot semantics, bundling, license/terms, caveats, and evidence paths under a failing gate.
+    evidence: [data/registry/sources.yml, scripts/verify_sources.py, docs/DATA_SOURCES.md]
+  - id: DA-P1-014
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: The engineering score consumed mutable generated files and a nonempty distribution directory could expose a stale wheel.
+    resolution: Reset verifier-owned outputs, require one rebuilt wheel, record SHA-256 and byte size for seven critical artifacts, require a complete manifest and matching installed-wheel hash, bind every score dependency to those records, and treat pending P0/P1 regression as open.
+    evidence: [scripts/verify_project.py, scripts/fresh_install_smoke.py, scripts/score_project.py, scripts/verify_deep_audit.py]
+  - id: DA-P2-001
+    priority: P2
+    status: fixed_and_full_regression_verified
+    summary: Synthetic evaluation console output omitted classification failures unless the JSON artifact was inspected.
+    resolution: Console output includes accuracy, false positives, and false negatives; validation documentation retains observed failures.
+    evidence: [scripts/evaluate_synthetic.py, docs/VALIDATION.md]
+  - id: DA-P2-002
+    priority: P2
+    status: fixed_and_full_regression_verified
+    summary: The documented root privacy command failed on ignored generated evidence after running verification.
+    resolution: Broad directory walks skip declared generated/cache paths while exact checkout enumeration still scans every publishable file.
+    evidence: [src/cutsignal/privacy.py, tests/test_pipeline_reporting_privacy.py, scripts/verify_project.py]
+
+caps:
+  - id: no_external_evidence
+    maximum_score: 93
+    baseline_applies: true
+    current_applies: true
+    reason: No independent reproduction, domain review, real users, adoption, deployment, or impact is established.
+
+external_evidence:
+  independent_method_reviews: 0
+  independent_reproductions: 0
+  structured_usability_participants: 0
+  independent_accessibility_reviews: 0
+  documented_real_users: 0
+  production_deployments: 0
+  organizational_adoptions: 0
+  real_world_impact_evaluations: 0
+  public_stars: not_observed

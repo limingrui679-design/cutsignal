@@ -9,7 +9,9 @@ from cutsignal.models import DietObjectiveWeights
 from cutsignal.optimization.diet import (
     MAX_OPTIMIZER_FOODS,
     _build_problem,
+    _coefficient_with_extra_uncertainty,
     build_pareto_frontier,
+    build_pareto_frontier_diagnostics,
     optimize_weekly_plan,
     validate_weekly_plan,
 )
@@ -30,6 +32,16 @@ def test_robust_milp_returns_auditable_feasible_plan(demo_foods, small_constrain
     assert result.sensitivity[0].feasible
     assert any(not item.feasible for item in result.sensitivity[1:])
     assert any("data quality" in warning for warning in result.warnings)
+
+    food = demo_foods[0]
+    stressed = _coefficient_with_extra_uncertainty(
+        food,
+        "protein_g",
+        "lower",
+        robust=True,
+        extra_points=0.05,
+    )
+    assert stressed == pytest.approx(food.protein_g * (1 - food.nutrient_uncertainty - 0.05))
 
     invalid_day = result.entries[0].model_copy(update={"day": small_constraints.days + 1})
     invalid = validate_weekly_plan([invalid_day, *result.entries[1:]], demo_foods, small_constraints)
@@ -97,3 +109,31 @@ def test_pareto_profiles_and_independent_matrix_formulation(demo_foods, small_co
     assert integrality.shape == c.shape
     assert bounds.lb.shape == c.shape
     assert linear.A.shape[1] == layout.size
+
+
+def test_optional_tradeoff_failure_is_retained_without_losing_baseline(
+    demo_foods,
+    small_constraints,
+    monkeypatch,
+) -> None:
+    baseline = optimize_weekly_plan(demo_foods, small_constraints, time_limit_seconds=1)
+
+    def fail_optional(*args, **kwargs):
+        raise OptimizationInfeasibleError("synthetic optional-profile timeout")
+
+    monkeypatch.setattr("cutsignal.optimization.diet.optimize_weekly_plan", fail_optional)
+    result = build_pareto_frontier_diagnostics(
+        demo_foods,
+        small_constraints,
+        time_limit_seconds=1,
+        baseline_plan=baseline,
+    )
+    assert [item.label for item in result.points] == ["balanced"]
+    assert result.attempted_profiles == 5
+    assert {item.label for item in result.failures} == {
+        "lowest-cost",
+        "fast-prep",
+        "preference-first",
+        "simple",
+    }
+    assert all(item.error_type == "OptimizationInfeasibleError" for item in result.failures)

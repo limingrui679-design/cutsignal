@@ -64,3 +64,11 @@ cases:
     capabilities: [streaming_xml, device_reconciliation, provenance, quality_flags]
     expected_gate: The importer keeps the maximum source-day total and emits a reconciliation flag.
     limitations: Maximum-source reconciliation is transparent and conservative, not universally correct.
+  - id: generic-schema-migration
+    title: Schema-compatible external CSV migration
+    domain: data_engineering
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Can vendor-neutral aliases, unit conversion, duplicate aggregation, and provenance survive ingestion?
+    capabilities: [schema_mapping, unit_conversion, duplicate_aggregation, provenance, migration_boundary]
+    expected_gate: A synthetic external-shaped CSV becomes two validated daily rows with explicit aggregation evidence.
+    limitations: This is a schema-compatible synthetic sample, not a native Garmin, Fitbit, or COROS conformance test.

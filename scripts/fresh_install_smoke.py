@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -48,9 +49,9 @@ def main() -> int:
     args = parser.parse_args()
     args.output.unlink(missing_ok=True)
     wheels = sorted(args.dist.glob("cutsignal-*.whl"), key=lambda path: path.stat().st_mtime)
-    if not wheels:
-        raise SystemExit(f"no CutSignal wheel found under {args.dist}")
-    wheel = wheels[-1].resolve()
+    if len(wheels) != 1:
+        raise SystemExit(f"expected exactly one CutSignal wheel under {args.dist}; found {len(wheels)}")
+    wheel = wheels[0].resolve()
 
     overall_started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="cutsignal-fresh-install-") as directory:
@@ -83,8 +84,10 @@ def main() -> int:
                     "-c",
                     (
                         "import cutsignal; "
+                        "from importlib.metadata import version; "
                         "from cutsignal.cases import list_cases, run_case; "
-                        "assert len(list_cases()) == 8; "
+                        "assert cutsignal.__version__ == version('cutsignal'); "
+                        "assert len(list_cases()) == 9; "
                         "assert run_case('device-overlap-reconciliation').passed; "
                         "assert callable(cutsignal.run_pipeline); "
                         "print(cutsignal.__version__)"
@@ -93,12 +96,18 @@ def main() -> int:
                 root,
             ),
             _run("pip_check", [str(python), "-m", "pip", "check"], root),
+            _run(
+                "installed_distributions",
+                [str(python), "-m", "pip", "list", "--format=json", "--disable-pip-version-check"],
+                root,
+            ),
         ]
 
     payload = {
         "schema_version": 1,
         "passed": True,
         "wheel": wheel.name,
+        "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(),
         "isolated_virtual_environment": True,
         "virtual_environment_seconds": venv_duration,
         "total_duration_seconds": round(time.monotonic() - overall_started, 3),

@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,11 @@ def download_snapshot(
     digest = hashlib.sha256()
     byte_count = 0
     headers = {"User-Agent": "CutSignal/0.2 public-data importer"}
+    response_metadata: dict[str, str | None] = {
+        "resolved_url": url,
+        "etag": None,
+        "last_modified": None,
+    }
     temporary: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -42,9 +48,22 @@ def download_snapshot(
             temporary = Path(handle.name)
             with httpx.stream("GET", url, timeout=timeout_seconds, headers=headers, follow_redirects=True) as r:
                 r.raise_for_status()
-                content_length = getattr(r, "headers", {}).get("content-length")
-                if content_length is not None and int(content_length) > MAX_SNAPSHOT_BYTES:
-                    raise DataValidationError("OpenPowerlifting snapshot exceeds the configured download limit")
+                response_headers = getattr(r, "headers", {})
+                content_length = response_headers.get("content-length")
+                if content_length is not None:
+                    try:
+                        reported_size = int(content_length)
+                    except ValueError as exc:
+                        raise DataValidationError("OpenPowerlifting returned an invalid content-length header") from exc
+                    if reported_size < 0:
+                        raise DataValidationError("OpenPowerlifting returned an invalid content-length header")
+                    if reported_size > MAX_SNAPSHOT_BYTES:
+                        raise DataValidationError("OpenPowerlifting snapshot exceeds the configured download limit")
+                response_metadata = {
+                    "resolved_url": str(getattr(r, "url", url)),
+                    "etag": response_headers.get("etag"),
+                    "last_modified": response_headers.get("last-modified"),
+                }
                 for chunk in r.iter_bytes():
                     if byte_count + len(chunk) > MAX_SNAPSHOT_BYTES:
                         raise DataValidationError("OpenPowerlifting snapshot exceeds the configured download limit")
@@ -61,6 +80,8 @@ def download_snapshot(
     manifest = {
         "source": "OpenPowerlifting",
         "url": url,
+        **response_metadata,
+        "retrieved_at_utc": datetime.now(UTC).isoformat(),
         "sha256": digest.hexdigest(),
         "bytes": byte_count,
         "license_note": "meet-data CSV is dedicated to the public domain by the provider",

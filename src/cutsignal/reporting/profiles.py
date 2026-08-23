@@ -94,6 +94,7 @@ def build_report_payload(result: PipelineResult, profile: ReportProfile) -> dict
                 {"scenario": item.scenario, "feasible": item.feasible} for item in result.diet.sensitivity
             ],
             "sampled_trade_off_profiles": [item.label for item in result.diet_pareto],
+            "failed_trade_off_profiles": [item.label for item in result.diet_tradeoff_failures],
         },
         "omitted_fields": [
             "calendar_dates",

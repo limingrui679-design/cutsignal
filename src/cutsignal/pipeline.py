@@ -22,7 +22,8 @@ from cutsignal.models import (
 from cutsignal.optimization.diet import (
     DietPlanResult,
     PlanPoint,
-    build_pareto_frontier,
+    TradeoffProfileFailure,
+    build_pareto_frontier_diagnostics,
     optimize_weekly_plan,
 )
 
@@ -73,6 +74,7 @@ class PipelineResult(BaseModel):
     strength: StrengthAnalysisResult
     diet: DietPlanResult
     diet_pareto: list[PlanPoint]
+    diet_tradeoff_failures: list[TradeoffProfileFailure]
     integrated_decision: IntegratedDecision
     receipt: PipelineReceipt
 
@@ -166,16 +168,18 @@ def run_pipeline(
         resolved_objectives,
         time_limit_seconds=diet_time_limit_seconds,
     )
-    pareto = build_pareto_frontier(
+    tradeoffs = build_pareto_frontier_diagnostics(
         foods,
         diet_constraints,
         time_limit_seconds=pareto_time_limit_seconds,
+        baseline_plan=diet,
     )
     return PipelineResult(
         cut=cut,
         strength=strength,
         diet=diet,
-        diet_pareto=pareto,
+        diet_pareto=tradeoffs.points,
+        diet_tradeoff_failures=tradeoffs.failures,
         integrated_decision=integrate_decisions(cut, strength, diet),
         receipt=PipelineReceipt(
             input_counts={

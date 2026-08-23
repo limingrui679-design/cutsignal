@@ -16,8 +16,11 @@ the cause of strength change, or replace a clinician or registered dietitian. No
 external review, clinical validity, or real-world impact are claimed.
 
 [中文说明](docs/README.zh-CN.md) · [Methods](docs/METHODS.md) ·
+[Method references](docs/REFERENCES.md) ·
 [Executable cases](docs/CASEBOOK.md) · [Privacy](docs/PRIVACY.md) ·
-[Validation](docs/VALIDATION.md) · [Audit ledger](docs/PROJECT_AUDIT.md)
+[Validation](docs/VALIDATION.md) · [Data card](docs/DATA_CARD.md) ·
+[Tutorial](docs/TUTORIAL.md) · [Benchmarks](docs/BENCHMARKS.md) ·
+[Troubleshooting](docs/TROUBLESHOOTING.md) · [Audit ledger](docs/PROJECT_AUDIT.md)
 
 ![CutSignal evidence-gated analytics overview](docs/assets/cutsignal-overview.svg)
 
@@ -44,6 +47,7 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 python -m pip install --upgrade pip
 python -m pip install -e '.[ui]'
 
+cutsignal doctor
 cutsignal demo --output artifacts/demo
 cutsignal ui
 ```
@@ -80,7 +84,7 @@ All screenshots below were rendered from the bundled fixed synthetic demo.
 
 ## Explore decision and failure modes
 
-One happy-path demo is not enough. The executable casebook covers eight different gates:
+One happy-path demo is not enough. The executable casebook covers nine different gates:
 
 ```bash
 cutsignal cases list
@@ -99,9 +103,22 @@ cutsignal cases verify --output artifacts/cases.json
 | `budget-shock` | modeled feasibility and visible failure under stronger shocks |
 | `vegetarian-allergen-plan` | dietary tags, soy exclusion, nutrition, budget, time, and variety |
 | `device-overlap-reconciliation` | phone/watch additive streams are not blindly summed |
+| `generic-schema-migration` | external-shaped CSV aliases, units, duplicates, and provenance survive normalization |
 
 Every case is labeled `deterministic_synthetic_fixture` and emits its assertions, observed values,
 duration, and limitation. See [the casebook](docs/CASEBOOK.md) for the exact evidence boundary.
+
+## Compare against a simple baseline
+
+```bash
+python scripts/evaluate_synthetic.py --output artifacts/synthetic-evaluation.json
+```
+
+This fixed known-truth stress grid compares the linked-particle recent-rate result with an
+observed-weight OLS baseline under clean, high-fluid, missing-data, recent-outlier, and logged-intake
+bias conditions. It reports error distributions, 95% interval coverage, Brier score, classification
+errors, and per-scenario failures. It is internal synthetic evaluation—not external calibration,
+population performance, or clinical validity. See [VALIDATION](docs/VALIDATION.md).
 
 ## Architecture
 
@@ -216,6 +233,9 @@ local exhaustion and do not imply that every 500-food mixed-integer model will s
 Five explicit weighted objectives produce a sampled non-dominated trade-off set. It is **not an exhaustive
 Pareto frontier**: discrete non-convex or unsampled solutions can be missed. Solver status
 and available MIP gap are always retained; a time-limited feasible incumbent is not called optimal.
+The independently validated primary balanced plan is retained if an optional comparison profile
+finds no incumbent; private output retains its label/type/reason and minimized output retains the
+failed profile label.
 
 Full assumptions and equations are in [docs/METHODS.md](docs/METHODS.md).
 
@@ -260,8 +280,10 @@ python scripts/score_project.py
 
 The verifier creates machine-readable evidence for the exact checkout. Its gates include lint,
 format, strict typing, tests and branch coverage, sdist/wheel builds, isolated temporary-venv wheel
-installation, public-API import, packaged case resources, `pip check`, `pip-audit`, UI startup, eight executable
-cases, privacy/credential scan, claims-registry validation, semantic documentation checks, and an end-to-end
+installation, public-API import, packaged case resources, `pip check`, `pip-audit`, UI startup, nine executable
+cases, the known-truth method benchmark, package/metadata/citation/changelog version consistency,
+privacy/credential scan, source/method/claims-registry validation,
+semantic documentation checks, and an end-to-end
 synthetic run. Repository-local Markdown links and image assets are checked separately.
 On a cold or slow machine, the full verifier can take 15–25 minutes because it creates a fresh
 virtual environment and queries a vulnerability service. Each gate and fresh-install phase prints
@@ -270,8 +292,9 @@ bounded progress; a network timeout fails instead of reusing an older result.
 Coverage evidence reports the combined metric and branch-only metric separately; the score requires
 at least 90% combined coverage and 80% branch-only coverage.
 
-`score_project.py` consumes that evidence only when its checkout fingerprint still matches. A full
-engineering score means the versioned repository gates passed; it does **not** mean 100% model
+`score_project.py` consumes that evidence only when its checkout fingerprint and the SHA-256/size of
+every score-critical generated artifact still match. A full engineering score means the versioned
+repository gates passed; it does **not** mean 100% model
 accuracy, clinical approval, deployment readiness, fairness, adoption, or impact. CI results are not
 claimed until a public remote actually runs them.
 
@@ -280,6 +303,8 @@ claimed until a public remote actually runs them.
 - `data/registry/claims.yml` binds each public capability statement to code/tests and lists what it
   does not establish.
 - `data/registry/sources.yml` records source role, bundling status, license/terms, and caveats.
+- `data/registry/method_references.yml` maps authoritative method sources to the exact mechanism
+  borrowed and the validity that cannot be transferred from the citation.
 - `docs/PROJECT_AUDIT.md` records P0/P1 findings and their machine gates.
 - `artifacts/verification.json`, `artifacts/cases.json`, and `artifacts/score.json` are generated
   evidence and intentionally ignored by Git.

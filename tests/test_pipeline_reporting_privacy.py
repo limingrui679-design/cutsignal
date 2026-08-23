@@ -4,6 +4,7 @@ import pytest
 
 from cutsignal.analysis.cut import CutAnalysisConfig
 from cutsignal.analysis.state_space import ParticleFilterConfig
+from cutsignal.optimization.diet import TradeoffProfileFailure
 from cutsignal.pipeline import integrate_decisions, run_pipeline
 from cutsignal.privacy import audit_paths
 from cutsignal.reporting.html import render_html_report
@@ -48,12 +49,19 @@ def test_pipeline_decision_precedence_and_report_redaction(
     assert '"report_profile": "private"' in json_text
     assert "observed_weight_kg" in json_text
     assert "Sensitive private report" in html
+    assert 'class="skip-link"' in html
+    assert 'aria-labelledby="trend-weight-chart-title trend-weight-chart-description"' in html
+    assert 'class="table-wrap"' in html
+    assert 'scope="col"' in html
+    assert "@media (max-width: 600px)" in html
     assert path.with_suffix(".json").exists()
 
     minimized = render_html_report(result, tmp_path / "share-safe.html", profile="share-safe")
     minimized_html = minimized.read_text(encoding="utf-8")
     minimized_json = minimized.with_suffix(".json").read_text(encoding="utf-8")
     assert 'data-report-profile="share-safe"' in minimized_html
+    assert 'aria-label="Decision signals"' in minimized_html
+    assert '<caption class="sr-only">' in minimized_html
     assert '"report_profile": "share-safe"' in minimized_json
     assert '"mip_gap_category":' in minimized_json
     for forbidden in (
@@ -68,6 +76,29 @@ def test_pipeline_decision_precedence_and_report_redaction(
         assert forbidden not in minimized_json
     with pytest.raises(ValueError, match="unsupported report profile"):
         build_report_payload(result, "unknown")  # type: ignore[arg-type]
+
+    diagnosed = result.model_copy(
+        update={
+            "diet_tradeoff_failures": [
+                TradeoffProfileFailure(
+                    label="fast-prep",
+                    error_type="OptimizationInfeasibleError",
+                    reason="synthetic profile timeout",
+                )
+            ]
+        }
+    )
+    diagnosed_report = render_html_report(diagnosed, tmp_path / "diagnosed.html", profile="private")
+    assert "fast-prep: synthetic profile timeout" in diagnosed_report.read_text(encoding="utf-8")
+    diagnosed_minimized = render_html_report(
+        diagnosed,
+        tmp_path / "diagnosed.share-safe.html",
+        profile="share-safe",
+    )
+    diagnosed_json = diagnosed_minimized.with_suffix(".json").read_text(encoding="utf-8")
+    assert '"failed_trade_off_profiles": [' in diagnosed_json
+    assert '"fast-prep"' in diagnosed_json
+    assert "synthetic profile timeout" not in diagnosed_json
 
     collect = result.cut.model_copy(
         update={"decision": result.cut.decision.model_copy(update={"action": "collect_more_data"})}
@@ -132,14 +163,47 @@ def test_privacy_audit_finds_credentials_and_private_keys(tmp_path) -> None:
     assert "possible sensitive content: private_key" in findings
     assert any(item.path.endswith(".env.production") for item in result.findings)
 
+    example = tmp_path / ".env.example"
+    example.write_text("OPTIONAL_API_KEY=DEMO_KEY\n", encoding="utf-8")
+    assert audit_paths([example]).passed
+
 
 def test_privacy_audit_does_not_treat_metrics_or_commit_ids_as_phones(tmp_path) -> None:
     evidence = tmp_path / "verification.yml"
     evidence.write_text(
-        "coverage: 91.93412162162163\ncommit: 54b5241c2b4e7b15448aec6766ce61f21af451f4\n",
+        "coverage: 91.93412162162163\n"
+        "commit: 54b5241c2b4e7b15448aec6766ce61f21af451f4\n"
+        "reference: https://doi.org/10.1214/aos/1176344136\n",
         encoding="utf-8",
     )
 
     result = audit_paths([evidence])
 
     assert result.passed
+
+
+def test_privacy_audit_rejects_local_home_paths(tmp_path) -> None:
+    document = tmp_path / "audit.md"
+    local_path = "/" + "Users" + "/example/Documents/private-project"
+    document.write_text(f"checkout: {local_path}\n", encoding="utf-8")
+
+    result = audit_paths([document])
+
+    assert not result.passed
+    assert any(item.finding == "possible sensitive content: local_home_path" for item in result.findings)
+
+
+def test_privacy_directory_walk_skips_declared_generated_evidence(tmp_path) -> None:
+    generated = tmp_path / "artifacts"
+    generated.mkdir()
+    generated.joinpath("verification.json").write_text(
+        "local_path: /" + "Users" + "/example/project\n",
+        encoding="utf-8",
+    )
+    tmp_path.joinpath(".coverage").write_text("generated binary-like evidence", encoding="utf-8")
+    tmp_path.joinpath("safe.md").write_text("synthetic public documentation", encoding="utf-8")
+
+    result = audit_paths([tmp_path])
+
+    assert result.passed
+    assert result.files_scanned == 1

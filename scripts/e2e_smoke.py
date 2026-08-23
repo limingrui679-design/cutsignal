@@ -121,6 +121,8 @@ def main() -> int:
             "baseline_stress_feasible": result.diet.sensitivity[0].feasible,
             "independent_validation": result.diet.independent_validation.feasible,
             "pareto_count": len(result.diet_pareto),
+            "tradeoff_failure_count": len(result.diet_tradeoff_failures),
+            "tradeoff_failed_profiles": [item.label for item in result.diet_tradeoff_failures],
             "tradeoff_method": result.receipt.diet_tradeoff_method,
         },
         "integration": {"decision": result.integrated_decision.action},

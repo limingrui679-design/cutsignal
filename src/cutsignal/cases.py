@@ -18,6 +18,7 @@ from cutsignal.analysis.state_space import ParticleFilterConfig
 from cutsignal.analysis.strength import StrengthAnalysisConfig, analyze_strength
 from cutsignal.exceptions import CutSignalError
 from cutsignal.importers.apple_health import import_apple_health
+from cutsignal.importers.generic import import_daily_csv
 from cutsignal.models import SourceRef, StrengthSet
 from cutsignal.optimization.diet import optimize_weekly_plan
 from cutsignal.synthetic import (
@@ -120,6 +121,24 @@ def _apple_overlap_case() -> tuple[float | None, set[str]]:
         source.write_text(document, encoding="utf-8")
         observation = import_apple_health(source)[0]
     return observation.steps, observation.quality_flags
+
+
+def _generic_schema_migration_case() -> tuple[list[float | None], list[int | None], set[str], str]:
+    document = """timestamp,bodyweight_lb,calorie_intake,step_count,sleep_duration_hours
+2026-01-01,176.37,1000,3500,7.0
+2026-01-01,176.81,1050,4200,7.4
+2026-01-02,175.93,2100,8100,7.1
+"""
+    with tempfile.TemporaryDirectory(prefix="cutsignal-case-") as directory:
+        source = Path(directory) / "schema-compatible-export.csv"
+        source.write_text(document, encoding="utf-8")
+        observations = import_daily_csv(source, provider="synthetic-schema-migration")
+    return (
+        [item.weight_kg for item in observations],
+        [item.steps for item in observations],
+        observations[0].quality_flags,
+        observations[0].sources[0].provider,
+    )
 
 
 def run_case(
@@ -293,6 +312,27 @@ def run_case(
             "reconciliation_flag": "steps_multi_source_reconciled" in flags,
         }
         observed = {"steps": steps, "quality_flags": sorted(flags)}
+    elif case_id == "generic-schema-migration":
+        configuration = {
+            "input_format": "schema-compatible synthetic CSV",
+            "weight_source_unit": "lb",
+            "duplicate_date_rule": "median weight; sum additive daily fields",
+        }
+        weights, migration_steps, migration_flags, provider = _generic_schema_migration_case()
+        assertions = {
+            "two_daily_rows": len(weights) == 2,
+            "pounds_converted_to_kg": weights[0] is not None and 79.9 < weights[0] < 80.3,
+            "duplicate_steps_aggregated": migration_steps[0] == 7_700,
+            "duplicate_flagged": "aggregated_duplicate_date" in migration_flags,
+            "provider_provenance_retained": provider == "synthetic-schema-migration",
+        }
+        observed = {
+            "daily_rows": len(weights),
+            "first_day_weight_kg": weights[0],
+            "first_day_steps": migration_steps[0],
+            "quality_flags": sorted(migration_flags),
+            "provider": provider,
+        }
     else:  # pragma: no cover - catalog and dispatch are validated together
         raise ValueError(f"case {case_id!r} has no executable implementation")
 

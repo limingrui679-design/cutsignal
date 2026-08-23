@@ -39,6 +39,8 @@ flowchart LR
   observed daily fields carried by state estimates; the share-safe builder structurally removes
   daily series, dates, exact metrics, exercise/food names, and menus.
 - `cases.py` and the packaged YAML catalog define executable, synthetic decision/failure cases.
+- `evaluation.py` owns the declared known-truth scenario grid, same-window OLS comparator, error and
+  interval metrics, and the synthetic-only interpretation boundary.
 - `pipeline.py` emits a typed run receipt with counts, configurations, constraints, and solver limits.
 
 ## Extension rule

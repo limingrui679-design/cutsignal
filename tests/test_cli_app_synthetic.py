@@ -25,6 +25,12 @@ def test_cli_version_help_and_daily_import(tmp_path) -> None:
     help_result = runner.invoke(app, ["--help"])
     assert help_result.exit_code == 0
     assert "device-independent" in runner.invoke(app, ["import", "--help"]).stdout
+    doctor = runner.invoke(app, ["doctor", "--json"])
+    assert doctor.exit_code == 0
+    diagnostics = json.loads(doctor.stdout)
+    assert diagnostics["passed"]
+    assert diagnostics["reads_user_data"] is False
+    assert diagnostics["dependencies"]
 
     source = tmp_path / "daily.csv"
     destination = tmp_path / "daily.jsonl"

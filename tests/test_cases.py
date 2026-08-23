@@ -10,7 +10,7 @@ from cutsignal.exceptions import OptimizationInfeasibleError
 
 def test_case_catalog_is_unique_and_bounded() -> None:
     cases = list_cases()
-    assert len(cases) == 8
+    assert len(cases) == 9
     assert len({case.id for case in cases}) == len(cases)
     assert all(case.evidence_type == "deterministic_synthetic_fixture" for case in cases)
     assert all(case.capabilities and case.limitations for case in cases)
@@ -31,6 +31,12 @@ def test_device_case_is_directly_runnable() -> None:
     result = run_case("device-overlap-reconciliation")
     assert result.passed
     assert result.observed["steps"] == 8_000
+
+
+def test_generic_migration_case_is_directly_runnable() -> None:
+    result = run_case("generic-schema-migration")
+    assert result.passed
+    assert result.observed["first_day_steps"] == 7_700
 
 
 def test_case_verifier_retains_expected_domain_failures(monkeypatch) -> None:

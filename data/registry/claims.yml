@@ -26,10 +26,15 @@ claims:
     evidence: [src/cutsignal/reporting/profiles.py, tests/test_pipeline_reporting_privacy.py]
     does_not_establish: [anonymity, protection on a compromised device]
   - id: executable-casebook
-    statement: Eight deterministic synthetic cases expose their decision question, assertions, observations, and limitations.
+    statement: Nine deterministic synthetic cases expose their decision question, assertions, observations, and limitations.
     maturity: implemented_and_locally_tested
     evidence: [src/cutsignal/resources/cases.yml, src/cutsignal/cases.py, tests/test_cases.py]
     does_not_establish: [population representativeness, external review]
+  - id: known-truth-synthetic-evaluation
+    statement: A fixed internal scenario grid compares linked particle trajectories with a recent-weight OLS baseline and retains per-scenario failures.
+    maturity: implemented_and_locally_tested
+    evidence: [src/cutsignal/evaluation.py, tests/test_evaluation.py, docs/VALIDATION.md]
+    does_not_establish: [external calibration, population performance, clinical validity]
   - id: external-validation
     statement: Clinical, population, and prospective external validation have not been established.
     maturity: not_established

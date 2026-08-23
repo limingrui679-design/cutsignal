@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from dataclasses import asdict, dataclass
@@ -27,12 +28,38 @@ def main() -> int:
     current = checkout_fingerprint()
     fingerprint_matches = evidence.get("checkout_fingerprint") == current
     checks = evidence.get("checks", {})
+    recorded_artifacts = evidence.get("artifacts", {})
     e2e = evidence.get("e2e", {})
     coverage = float(evidence.get("coverage", {}).get("percent_covered", 0))
     branch_coverage = float(evidence.get("coverage", {}).get("percent_branches_covered", 0))
 
     def passed(*names: str) -> bool:
         return fingerprint_matches and all(bool(checks.get(name, {}).get("passed")) for name in names)
+
+    def artifact_matches(name: str) -> bool:
+        record = recorded_artifacts.get(name, {})
+        relative = record.get("path")
+        expected_hash = record.get("sha256")
+        expected_bytes = record.get("bytes")
+        if not isinstance(relative, str) or not isinstance(expected_hash, str) or not isinstance(expected_bytes, int):
+            return False
+        path = (ROOT / relative).resolve()
+        if not path.is_relative_to(ROOT.resolve()) or not path.is_file() or path.stat().st_size != expected_bytes:
+            return False
+        return hashlib.sha256(path.read_bytes()).hexdigest() == expected_hash
+
+    artifact_integrity = {
+        name: artifact_matches(name)
+        for name in (
+            "coverage",
+            "cases",
+            "synthetic_evaluation",
+            "fresh_install",
+            "e2e_summary",
+            "wheel",
+            "source_distribution",
+        )
+    }
 
     cut = e2e.get("cut", {})
     strength = e2e.get("strength", {})
@@ -49,12 +76,16 @@ def main() -> int:
     case_path = ARTIFACTS / "cases.json"
     if case_path.exists():
         case_payload = json.loads(case_path.read_text(encoding="utf-8"))
+    evaluation_payload: dict[str, Any] = {}
+    evaluation_path = ARTIFACTS / "synthetic-evaluation.json"
+    if evaluation_path.exists():
+        evaluation_payload = json.loads(evaluation_path.read_text(encoding="utf-8"))
 
     items = [
         RubricItem(
             "Automated tests and branch coverage",
             16,
-            passed("pytest_coverage") and coverage >= 90 and branch_coverage >= 80,
+            passed("pytest_coverage") and artifact_integrity["coverage"] and coverage >= 90 and branch_coverage >= 80,
             (
                 f"pytest={passed('pytest_coverage')}; combined coverage={coverage:.2f}%; "
                 f"branch-only coverage={branch_coverage:.2f}%"
@@ -63,22 +94,28 @@ def main() -> int:
         RubricItem(
             "Trajectory posterior, sensitivity, and evidence gates",
             14,
-            passed("e2e", "cases")
+            passed("e2e", "cases", "synthetic_evaluation")
+            and artifact_integrity["cases"]
+            and artifact_integrity["synthetic_evaluation"]
+            and artifact_integrity["e2e_summary"]
             and cut.get("state_count") == 112
             and cut.get("sensitivity_count") == 5
             and cut.get("rate_method") == "linked_particle_trajectories"
             and bool(cut.get("unstable_signal_was_gated"))
             and bool(case_payload.get("passed"))
-            and len(case_payload.get("cases", [])) == 8,
+            and len(case_payload.get("cases", [])) == 9
+            and len(evaluation_payload.get("scenarios", [])) == 12,
             (
                 f"states={cut.get('state_count')}; scenarios={cut.get('sensitivity_count')}; "
-                f"method={cut.get('rate_method')}; cases={len(case_payload.get('cases', []))}"
+                f"method={cut.get('rate_method')}; cases={len(case_payload.get('cases', []))}; "
+                f"evaluation_runs={len(evaluation_payload.get('scenarios', []))}"
             ),
         ),
         RubricItem(
             "Strength uncertainty and training-load evidence",
             10,
             passed("e2e")
+            and artifact_integrity["e2e_summary"]
             and int(strength.get("exercise_count", 0)) >= 3
             and int(strength.get("session_metric_count", 0)) >= 40
             and int(strength.get("weekly_summary_count", 0)) >= 8
@@ -92,6 +129,7 @@ def main() -> int:
             "Robust diet MILP and independent validation",
             14,
             passed("e2e")
+            and artifact_integrity["e2e_summary"]
             and diet.get("days") == 7
             and bool(diet.get("baseline_stress_feasible"))
             and bool(diet.get("independent_validation"))
@@ -144,25 +182,47 @@ def main() -> int:
             "CLI, casebook, and local UI startup",
             5,
             passed("cli", "ui", "cases"),
-            "CLI help, eight cases, and Streamlit application-test startup",
+            "CLI help, nine cases, and Streamlit application-test startup",
         ),
         RubricItem(
             "Build and isolated-install reproducibility",
             10,
-            passed("wheel", "fresh_install", "pip_check", "dependency_audit", "public_api")
-            and any((ARTIFACTS / "dist").glob("cutsignal-*.whl"))
-            and any((ARTIFACTS / "dist").glob("cutsignal-*.tar.gz")),
-            "sdist+wheel, temporary-venv install, packaged resources, API import, pip check, and pip-audit",
+            passed(
+                "wheel",
+                "fresh_install",
+                "pip_check",
+                "dependency_audit",
+                "public_api",
+                "version_consistency",
+                "workflow_supply_chain",
+            )
+            and artifact_integrity["fresh_install"]
+            and artifact_integrity["wheel"]
+            and artifact_integrity["source_distribution"],
+            (
+                "sdist+wheel, temporary-venv install, version consistency, packaged resources, "
+                "API import, pip check, and pip-audit"
+            ),
         ),
         RubricItem(
             "Documentation, sources, and evidence-bound claims",
             5,
             fingerprint_matches
             and bool(evidence.get("documentation", {}).get("passed"))
-            and passed("claims", "strict_audit", "docs_links"),
+            and passed(
+                "claims",
+                "method_references",
+                "source_registry",
+                "strict_audit",
+                "deep_audit",
+                "docs_links",
+            ),
             (
                 f"documentation={evidence.get('documentation', {}).get('passed')}; "
-                f"claims={passed('claims')}; strict_audit={passed('strict_audit')}; "
+                f"claims={passed('claims')}; references={passed('method_references')}; "
+                f"sources={passed('source_registry')}; "
+                f"strict_audit={passed('strict_audit')}; "
+                f"deep_audit={passed('deep_audit')}; "
                 f"links={passed('docs_links')}"
             ),
         ),
@@ -172,6 +232,7 @@ def main() -> int:
         "schema_version": 2,
         "checkout_fingerprint": current,
         "verification_fingerprint_matches": fingerprint_matches,
+        "artifact_integrity": artifact_integrity,
         "score": score,
         "maximum": 100,
         "all_gates_passed": score == 100,

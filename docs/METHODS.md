@@ -2,6 +2,10 @@
 
 CutSignal is a decision-support prototype. Its uncertainty intervals describe this model under its
 assumptions; they are not clinical reference intervals and do not prove a biological mechanism.
+Algorithm provenance and transfer limits are mapped in [Method references](REFERENCES.md) and the
+machine-readable [`method_references.yml`](../data/registry/method_references.yml). A citation
+supports the named method family or upstream contract; it does not externally validate CutSignal's
+adaptation, parameter values, intervals, or decisions.
 
 ## 1. Latent trend weight and TDEE
 
@@ -93,6 +97,10 @@ preference-first, and simple profiles are solved and dominated points removed. H
 relative MIP gap are retained. A time-limited feasible plan is never labelled globally optimal.
 The retained profiles are a sampled non-dominated trade-off set, not an exhaustive Pareto frontier;
 weighted-sum sampling can miss discrete non-convex trade-offs.
+The primary balanced plan is reused as the balanced comparison point. If a time-limited optional
+profile produces no incumbent, the core analysis continues with the independently validated primary
+plan and successful points while retaining the failed profile label, error type, and reason. A
+missing optional point is never interpreted as dominance.
 
 ## 6. Reproducibility
 
@@ -103,5 +111,32 @@ streams. Floating-point and solver versions can still change the exact incumbent
 feasibility, disclosed status/gap, invariant gates, and artifact hashes rather than requiring one
 specific menu.
 
-Eight executable deterministic synthetic cases test decision and failure modes. They are software
+Nine executable deterministic synthetic cases test typical, abstention, boundary, stress-failure,
+and schema-migration behaviors. They are software
 fixtures with stated expectations, not population samples or external-validation evidence.
+
+A separate fixed known-truth scenario grid compares the recent-rate posterior with an
+observed-weight OLS baseline. It reports error, interval coverage, Brier score, and classification
+failures, including high-fluid, missing-data, recent-outlier, and intake-bias stress. Because the
+generator belongs to this project, those metrics are internal method checks—not external
+calibration, subgroup validity, or clinical evidence.
+
+## 7. Method provenance and non-transfer boundary
+
+The method registry links the particle-filter family, dynamic energy-balance context, BIC,
+repetition-to-1RM/RIR evidence, random-effects variance estimator, robust-optimization framework,
+diet linear programming, and USDA field contract to primary or authoritative sources. It also
+records how each source differs from this implementation. In particular:
+
+- the Hall/NIDDK physiological model motivates dynamic thinking but is not implemented here;
+- DerSimonian-Laird is adapted from study-level meta-analysis to exercise slopes, whose
+  exchangeability is unverified;
+- Bertsimas-Sim is a conceptual robustness reference, while CutSignal uses a more conservative
+  simultaneous box set rather than a budgeted uncertainty set;
+- e1RM and RIR papers motivate uncertainty and effort fields but do not calibrate longitudinal
+  estimates for an arbitrary user.
+
+These distinctions are executable documentation requirements, not optional caveats. Run
+`python scripts/verify_method_references.py` to validate registry completeness and its documentation
+mapping. URL reachability is intentionally not a build gate because CI must not turn third-party
+availability into evidence about local method correctness.

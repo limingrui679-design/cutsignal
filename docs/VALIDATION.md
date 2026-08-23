@@ -15,13 +15,18 @@ Validation is layered so that a green UI does not substitute for analytical evid
    combined decline/fatigue recovery review.
 5. Optimization tests require every modeled robust constraint to pass, independently reconstruct
    all constraints from the selected menu, verify solver status/gap and infeasibility paths, and
-   construct a separate SciPy matrix form.
+   construct a separate SciPy matrix form. A regression test also forces every optional trade-off
+   solve to fail and requires the validated primary point plus all four failure records to survive.
 6. Pipeline/report tests verify decision precedence and structural separation between sensitive
    private reports and data-minimized share-safe reports.
 7. Streamlit receives a separate click-level application test. Core combined statement-and-branch
    coverage remains ≥90%, and branch-only coverage remains ≥80%; both are reported separately.
-8. Eight executable synthetic cases cover distinct decisions and failure modes.
-9. sdist/wheel build, isolated temporary-venv installation, public API and packaged resources,
+8. Nine executable synthetic cases cover typical, abstention, boundary, stress-failure, and
+   schema-migration behaviors.
+9. A fixed 12-run known-truth simulation grid compares the linked-particle rate with a recent-weight
+   OLS baseline and reports per-scenario errors, interval coverage, Brier score, false positives,
+   false negatives, and fixed-grid bootstrap intervals.
+10. sdist/wheel build, isolated temporary-venv installation, public API and packaged resources,
    `pip check`, `pip-audit`, CLI help, claims registry, local documentation links/images,
    privacy/credential scan,
    end-to-end run, and artifact hashes are recorded in `artifacts/verification.json`.
@@ -52,3 +57,22 @@ rights have been reviewed.
 
 The local verifier is evidence of local execution only. GitHub workflow files are not reported as
 passing CI until a public remote actually executes them.
+
+## Internal synthetic evaluation result boundary
+
+Run `python scripts/evaluate_synthetic.py`. The generator fixes true linear trend rates and applies
+clean, high-fluid, missing-data, outlier, and intake-bias conditions. Both methods see the same daily
+stream and recent rate window; OLS intentionally ignores intake and earlier history. The scenario
+grid is declared in code before scoring and failed scenarios remain in JSON.
+
+These results test behavior against truths defined by this project's own generator. They do not
+establish external calibration, population calibration, subgroup performance, causal validity,
+detection delay under real behavior, or benefit to users. Bootstrap intervals describe resampling
+of the fixed grid only.
+
+The fixed-grid result is deliberately not a success-only exhibit. At 500 particles, the current
+linked-trajectory method misses three of four true plateau classifications at the declared 0.75
+threshold and its nominal model interval contains the fixed truth in 10 of 12 scenarios (83.3%).
+The OLS comparator misses all four plateaus and contains truth in 8 of 12 scenarios (66.7%). Those
+failures remain in the JSON. They are evidence for abstention and further calibration work, not a
+reason to tune the generator or threshold after observing this grid.

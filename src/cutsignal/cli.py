@@ -5,8 +5,11 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import platform
 import subprocess
 import sys
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 from typing import Annotated, Literal, NoReturn
 
@@ -83,6 +86,49 @@ def _manifest(root: Path, paths: list[Path]) -> Path:
 def version() -> None:
     """Print the installed CutSignal version."""
     typer.echo(__version__)
+
+
+@app.command()
+def doctor(
+    as_json: Annotated[bool, typer.Option("--json", help="Emit machine-readable diagnostics.")] = False,
+) -> None:
+    """Check the local runtime without reading any health or credential files."""
+    required = ["defusedxml", "highspy", "httpx", "numpy", "pandas", "pulp", "pydantic", "pyyaml", "scipy"]
+    dependencies: list[dict[str, object]] = []
+    for distribution in required:
+        try:
+            installed = distribution_version(distribution)
+        except PackageNotFoundError:
+            installed = None
+        dependencies.append({"distribution": distribution, "installed": installed, "required": True})
+    python_supported = sys.version_info >= (3, 11)
+    payload = {
+        "cutsignal_version": __version__,
+        "python": platform.python_version(),
+        "python_supported": python_supported,
+        "platform": platform.platform(),
+        "dependencies": dependencies,
+        "optional_ui_available": importlib.util.find_spec("streamlit") is not None,
+        "reads_user_data": False,
+        "passed": python_supported and all(item["installed"] is not None for item in dependencies),
+    }
+    if as_json:
+        typer.echo(json.dumps(payload, indent=2))
+    else:
+        table = Table(title="CutSignal environment check")
+        table.add_column("Check")
+        table.add_column("Result")
+        table.add_row("CutSignal", __version__)
+        table.add_row("Python", f"{payload['python']} ({'supported' if python_supported else 'unsupported'})")
+        table.add_row(
+            "Required dependencies",
+            f"{sum(item['installed'] is not None for item in dependencies)}/{len(dependencies)}",
+        )
+        table.add_row("Optional UI", "available" if payload["optional_ui_available"] else "not installed")
+        table.add_row("Reads user data", "no")
+        console.print(table)
+    if not payload["passed"]:
+        raise typer.Exit(code=1)
 
 
 @import_app.command("apple-health")
@@ -169,7 +215,7 @@ def demo(
     output: Annotated[Path, typer.Option(help="Synthetic artifact directory.")] = Path("artifacts/demo"),
     particles: Annotated[int, typer.Option(min=500, max=100_000)] = 2_000,
     optimizer_seconds: Annotated[float, typer.Option(min=1, max=300)] = 5.0,
-    pareto_seconds: Annotated[float, typer.Option(min=1, max=120)] = 2.0,
+    pareto_seconds: Annotated[float, typer.Option(min=1, max=120)] = 3.0,
 ) -> None:
     """Generate fixed synthetic inputs and a complete offline report."""
     daily = generate_daily_demo()

@@ -19,7 +19,7 @@ validation or adoption.
 | Volume, intensity, RPE, and frequency were not first-class outputs | Fixed | Session and weekly summaries plus dashboard views |
 | Diet solver output lacked a complete independent constraint audit | Fixed | Post-solve reconstruction of nutrition, cost, time, serving, variety, tag, and allergen constraints |
 | Five objective profiles were described too broadly as a Pareto frontier | Fixed | Described and labeled as a sampled non-dominated trade-off set, not an exhaustive Pareto frontier |
-| One integrated synthetic demo could not demonstrate distinct decisions and failure modes | Fixed | Eight executable deterministic cases with explicit assertions and limitations |
+| One integrated synthetic demo could not demonstrate distinct decisions and failure modes | Fixed | Nine executable deterministic cases with explicit assertions and limitations |
 | Detailed and shareable report surfaces were not structurally distinct | Fixed | Separate payload builders, HTML labels, CLI option, demo artifacts, and tests |
 | Input readers had no uniform size/row/line limits | Fixed | Shared file, row, line, and UI-upload limits with tests |
 | Wheel build did not prove isolated installation or packaged case resources | Fixed | Temporary-venv wheel installation, public-API import, packaged case execution, and `pip check` |
@@ -50,6 +50,19 @@ validation or adoption.
 | Fixed synthetic inputs were described in a way that could imply byte-identical time-limited solver output | Fixed | Documentation now separates deterministic fixture inputs from variable feasible incumbents and report hashes |
 | Default dependency-audit transport failed on a 15-second PyPI TLS/read timeout | Fixed | Local and CI checks use pip-audit's supported OSV service with a 60-second socket timeout and still fail closed on service errors |
 | Fresh-wheel verification was silent and could hit a 420-second aggregate timeout under a slow runtime | Fixed | Binary-only dependency install, per-phase timings, captured timeout output, and bounded 600-second command / 900-second aggregate limits |
+| USDA energy could be misread when an explicit kJ value was below the old magnitude threshold | Fixed | Nutrient-ID priority, explicit unit conversion, unsupported-unit rejection, and regression tests |
+| A diet stress label said “plus 5 points” while coefficients compounded 5% after modeled uncertainty | Fixed | Additive percentage-point stress helper shared by macro and micronutrient checks, with an exact-formula test |
+| Optional food APIs buffered unbounded bodies and accepted unsafe path identifiers | Fixed | Numeric identifier allowlists, streamed 5 MiB cap, invalid JSON/object rejection, and boundary tests |
+| The core trend model had no executable comparator on a declared truth grid | Fixed within internal evidence scope | Fixed 12-run generator, recent-weight OLS baseline, scenario-level error/coverage/Brier output, and explicit external-validity boundary |
+| The casebook had no migration-shaped input crossing the generic schema boundary | Fixed within synthetic scope | Ninth case checks aliases, lb-to-kg conversion, duplicate aggregation, and provenance; native vendor conformance remains unestablished |
+| Streamlit AppTest could reject a valid cold start at its old 45-second phase limit | Fixed | Explicit 120-second phase bounds remain inside the verifier's 300-second outer timeout; slow starts remain visible rather than unbounded |
+| The UI default could underfund optional trade-off solves and display a solver traceback | Fixed | Safer default/profile time budgets plus an actionable expected-domain-error boundary; UI smoke still requires a complete result |
+| A failed optional trade-off profile aborted a valid primary pipeline run | Fixed | Primary balanced point reuse plus structured failure retention; forced-failure regression and E2E output prove partial comparison does not hide missing points |
+| Named method families had no single authoritative provenance map or transfer boundary | Fixed | Ten primary/authoritative references record the mechanism used and what the source cannot establish; the registry-to-document map is machine validated |
+| DOI article identifiers could be misclassified as phone numbers, while host-specific home paths were not rejected | Fixed | URL-path-aware phone matching, explicit local-home-path detection, sanitized audit metadata, and adversarial regression tests |
+| The verifier's “public-tree” privacy scan enumerated selected paths instead of the complete publishable checkout | Fixed | The scan and checkout fingerprint now share every Git-tracked plus non-ignored untracked file, including workflows and top-level governance files |
+| Package, build metadata, citation metadata, and changelog versions could drift without failing verification | Fixed | A version-consistency gate checks all four plus the installed distribution; isolated-wheel smoke also compares runtime and distribution versions |
+| The source registry omitted explicit version/snapshot boundaries and had no machine validator | Fixed | Five sources now declare access date, version/snapshot semantics, bundling, license/terms, caveats, and local evidence paths; the full verifier checks the schema |
 
 ## P2 / roadmap
 
@@ -61,6 +74,11 @@ validation or adoption.
 - Fixed in the strict-review pass: `docs/STRICT_AUDIT.md` separates the repository's machine
   engineering score from a portfolio-wide score that deducts for synthetic-only cases, missing
   external validation, and publication state.
+- Fixed in the deep-review pass: the synthetic benchmark command now prints classification accuracy,
+  false positives, and false negatives; documentation retains the observed 83.3% fixed-grid interval
+  coverage and three missed plateau classifications instead of presenting only relative wins.
+- Fixed in the deep-review pass: a broad `privacy-audit .` walk skips declared generated/tool
+  evidence that contains local paths, while the verifier still scans every publishable checkout file.
 
 - Calibrate the trend/plateau decision on preregistered simulations and appropriately governed
   external cohorts.

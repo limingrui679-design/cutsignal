@@ -3,6 +3,31 @@
 All notable changes follow a lightweight Keep a Changelog format. The project uses semantic
 versioning while the public API stabilizes.
 
+## [Unreleased]
+
+### Added
+
+- Fixed 12-run known-truth recent-rate evaluation with a same-window OLS baseline, per-scenario
+  errors, interval coverage, Brier score, classification failures, and bounded claims.
+- Ninth schema-migration case, data card, benchmark matrix, first-analysis tutorial,
+  troubleshooting guide, support boundary, and `cutsignal doctor` diagnostics.
+- Accessible report navigation, chart descriptions, responsive labeled tables, chart titles, and
+  print/mobile styles.
+
+### Fixed
+
+- USDA nutrition normalization now uses explicit nutrient IDs and units, including kJ/kcal and
+  mass conversion, instead of magnitude-based energy guessing.
+- Diet stress scenarios now apply additional nutrition uncertainty as declared additive percentage
+  points.
+- Food API helpers now validate path identifiers and enforce a streamed 5 MiB response limit.
+
+### Security
+
+- GitHub Actions are pinned to verified full commit SHAs while Dependabot retains update coverage.
+- Verification now clears only verifier-owned outputs, rejects ambiguous wheel directories, records
+  hashes for score-critical artifacts, and refuses a score when any recorded artifact changes.
+
 ## [0.2.0] - 2026-08-20
 
 ### Added

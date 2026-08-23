@@ -11,7 +11,7 @@ from cutsignal.pipeline import PipelineResult
 from cutsignal.reporting.profiles import ReportProfile, build_report_payload
 
 
-def _polyline(values: list[float], *, width: int = 760, height: int = 220) -> str:
+def _polyline(values: list[float], *, label: str, width: int = 760, height: int = 220) -> str:
     if not values:
         return ""
     lower = min(values)
@@ -23,7 +23,11 @@ def _polyline(values: list[float], *, width: int = 760, height: int = 220) -> st
         y = height - 10 - (value - lower) / spread * (height - 20)
         points.append(f"{x:.1f},{y:.1f}")
     return (
-        f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="trend chart">'
+        f'<svg viewBox="0 0 {width} {height}" role="img" aria-labelledby="{html.escape(label)}-title '
+        f'{html.escape(label)}-description">'
+        f'<title id="{html.escape(label)}-title">{html.escape(label.replace("-", " ").title())}</title>'
+        f'<desc id="{html.escape(label)}-description">Line chart with minimum and maximum values labeled. '
+        "Exact series values are available in the adjacent JSON report.</desc>"
         '<rect width="100%" height="100%" rx="12" fill="#101827"/>'
         f'<polyline points="{" ".join(points)}" fill="none" stroke="#50e3c2" '
         'stroke-width="3" vector-effect="non-scaling-stroke"/>'
@@ -90,6 +94,16 @@ def _pareto_rows(result: PipelineResult) -> str:
     )
 
 
+def _tradeoff_failures(result: PipelineResult) -> str:
+    if not result.diet_tradeoff_failures:
+        return '<p class="muted">All optional objective profiles produced a validated incumbent.</p>'
+    return (
+        '<p class="notice"><strong>Optional profile failures:</strong> The primary plan remains independently '
+        "validated; these time-limited comparison profiles produced no incumbent.</p>"
+        + _list([f"{item.label}: {item.reason}" for item in result.diet_tradeoff_failures])
+    )
+
+
 def _share_safe_document(result: PipelineResult, css: str) -> str:
     payload = build_report_payload(result, "share-safe")
     adequacy = payload["data_adequacy"]
@@ -104,8 +118,9 @@ def _share_safe_document(result: PipelineResult, css: str) -> str:
     assert isinstance(omitted, list)
     return f"""<!doctype html>
 <html lang="en" data-report-profile="share-safe"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width"><title>CutSignal minimized report</title>
-<style>{css}</style></head><body><main>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>CutSignal minimized report</title>
+<style>{css}</style></head><body><a class="skip-link" href="#main-content">Skip to report</a>
+<main id="main-content" tabindex="-1">
 <h1>CutSignal</h1><p class="muted">Data-minimized decision summary · no calendar dates or exact health series</p>
 <p class="notice"><strong>Privacy boundary:</strong> Derived categories can still be sensitive. This profile
 reduces disclosure but does not guarantee anonymity; review it for the intended audience before sharing.</p>
@@ -116,15 +131,17 @@ reduces disclosure but does not guarantee anonymity; review it for the intended 
 <div class="card">Weight coverage<strong>{html.escape(str(adequacy["weight_coverage"]))}</strong></div>
 <div class="card">Intake coverage<strong>{html.escape(str(adequacy["intake_coverage"]))}</strong></div>
 <div class="card">Food data quality<strong>{html.escape(str(adequacy["food_data_quality"]))}</strong></div></div>
-<h2>Decision signals</h2><table><thead><tr><th>Domain</th><th>Decision/category</th>
-<th>Robustness</th></tr></thead><tbody>
+<h2>Decision signals</h2><div class="table-wrap" role="region" aria-label="Decision signals" tabindex="0">
+<table><caption class="sr-only">Decision signals by analysis domain</caption><thead><tr>
+<th scope="col">Domain</th><th scope="col">Decision/category</th>
+<th scope="col">Robustness</th></tr></thead><tbody>
 <tr><td>Fat-loss trend</td><td>{html.escape(str(cut["decision"]))} · {html.escape(str(cut["trend_direction"]))}</td>
 <td>plateau posterior {html.escape(str(cut["plateau_probability"]))};
 sensitivity {html.escape(str(cut["sensitivity_stability"]))}</td></tr>
 <tr><td>Strength retention</td><td>{html.escape(str(strength["decision"]))}</td>
 <td>fatigue signal present: {html.escape(str(strength["fatigue_signals_present"]).lower())}</td></tr>
 <tr><td>Food plan</td><td>{html.escape(str(diet["solver_status"]))}</td>
-<td>MIP gap: {html.escape(str(diet["mip_gap_category"]))}</td></tr></tbody></table>
+<td>MIP gap: {html.escape(str(diet["mip_gap_category"]))}</td></tr></tbody></table></div>
 <h2>Intentionally omitted</h2>{_list([str(item) for item in omitted])}
 </main></body></html>"""
 
@@ -138,8 +155,14 @@ def render_html_report(
     """Render an explicit private-detail or data-minimized report bundle."""
     cut = result.cut
     decision = result.integrated_decision
-    weight_chart = _polyline([item.trend_weight_median_kg for item in cut.state_estimates])
-    tdee_chart = _polyline([item.tdee_median_kcal for item in cut.state_estimates])
+    weight_chart = _polyline(
+        [item.trend_weight_median_kg for item in cut.state_estimates],
+        label="trend-weight-chart",
+    )
+    tdee_chart = _polyline(
+        [item.tdee_median_kcal for item in cut.state_estimates],
+        label="latent-tdee-chart",
+    )
     css = """
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
     body { margin: 0; background: #07101d; color: #e8eef8; }
@@ -147,20 +170,32 @@ def render_html_report(
     h1 { font-size: 2.35rem; margin-bottom: .25rem; }
     h2 { margin-top: 2.4rem; }
     .muted { color: #93a4bb; }
+    a { color: #80bfff; }
+    a:focus-visible, [tabindex]:focus-visible { outline: 3px solid #ffcc66; outline-offset: 3px; }
+    .skip-link { position:absolute; left:-9999px; top:8px; background:#fff; color:#07101d; padding:10px; z-index:10; }
+    .skip-link:focus { left:8px; }
     .notice { border-left: 4px solid #ffcc66; background: #171d27; padding: 14px 18px; }
     .cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 12px; }
     .card { background: #101827; border: 1px solid #22324a; border-radius: 14px; padding: 16px; }
     .card strong { display:block; font-size:1.55rem; color:#50e3c2; margin-top:6px; }
     table { width:100%; border-collapse: collapse; background:#101827; }
+    .table-wrap { overflow-x:auto; border-radius: 10px; }
     th,td { text-align:left; padding:10px; border-bottom:1px solid #26364c; }
     th { color:#93a4bb; }
     svg { width:100%; height:auto; }
     code { color:#80bfff; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+      clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (max-width: 600px) { main { padding:24px 14px 48px; } h1 { font-size:1.9rem; }
+      th,td { padding:8px; } }
+    @media print { :root { color-scheme: light; } body { background:#fff; color:#111; }
+      .card, table, .notice { background:#fff; color:#111; border-color:#777; } .muted, th { color:#333; } }
     """
     document = f"""<!doctype html>
 <html lang="en" data-report-profile="private"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width">
-<title>CutSignal private report</title><style>{css}</style></head><body><main>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CutSignal private report</title><style>{css}</style></head><body>
+<a class="skip-link" href="#main-content">Skip to report</a><main id="main-content" tabindex="-1">
 <h1>CutSignal</h1><p class="muted">Private, offline decision report · {cut.start_date} to {cut.end_date}</p>
 <p class="notice"><strong>Sensitive private report:</strong> This file contains dates, observed weight/intake,
 latent TDEE, exercise-level metrics, and food-plan details. Keep it local unless reviewed field by field.<br>
@@ -176,18 +211,29 @@ latent TDEE, exercise-level metrics, and food-plan details. Keep it local unless
 <p>Weight completeness: {cut.weight_completeness:.0%}; intake completeness: {cut.intake_completeness:.0%}.</p>
 <h2>Strength retention</h2><p>Overall retention score: <strong>{result.strength.overall_retention_score:.1f}</strong>;
 status: <strong>{result.strength.decision.action}</strong>.</p>
-<table><thead><tr><th>Exercise</th><th>Sessions</th><th>e1RM change</th><th>Shrunk trend</th>
-<th>Decline probability</th><th>Fatigue</th></tr></thead><tbody>{_strength_rows(result)}</tbody></table>
+<div class="table-wrap" role="region" aria-label="Strength results" tabindex="0"><table>
+<caption class="sr-only">Exercise-level strength results</caption><thead><tr><th scope="col">Exercise</th>
+<th scope="col">Sessions</th><th scope="col">e1RM change</th><th scope="col">Shrunk trend</th>
+<th scope="col">Decline probability</th><th scope="col">Fatigue</th></tr></thead>
+<tbody>{_strength_rows(result)}</tbody></table></div>
 <h2>Robust weekly food plan</h2><p>{result.diet.unique_foods} unique foods; robust weekly cost
 {result.diet.robust_total_cost_upper:.2f}; weighted data quality {result.diet.weighted_data_quality:.0%}.
 Solver status: <strong>{html.escape(result.diet.status)}</strong>; MIP gap:
 <strong>{"n/a" if result.diet.mip_gap is None else f"{result.diet.mip_gap:.1%}"}</strong>.</p>
-<table><thead><tr><th>Day</th><th>Calories</th><th>Robust protein</th><th>Robust fiber</th>
-<th>Robust cost</th><th>Prep</th></tr></thead><tbody>{_diet_rows(result)}</tbody></table>
-<h3>Coefficient stress tests</h3><table><thead><tr><th>Scenario</th><th>Result</th><th>Violations</th>
-</tr></thead><tbody>{_sensitivity_rows(result)}</tbody></table>
-<h3>Non-dominated objective profiles</h3><table><thead><tr><th>Profile</th><th>Cost</th><th>Prep</th>
-<th>Preference</th></tr></thead><tbody>{_pareto_rows(result)}</tbody></table>
+<div class="table-wrap" role="region" aria-label="Daily food plan" tabindex="0"><table>
+<caption class="sr-only">Robust daily food plan totals</caption><thead><tr><th scope="col">Day</th>
+<th scope="col">Calories</th><th scope="col">Robust protein</th><th scope="col">Robust fiber</th>
+<th scope="col">Robust cost</th><th scope="col">Prep</th></tr></thead><tbody>{_diet_rows(result)}</tbody></table></div>
+<h3>Coefficient stress tests</h3><div class="table-wrap" role="region" aria-label="Coefficient stress tests"
+tabindex="0"><table><caption class="sr-only">Post-solve coefficient stress tests</caption><thead><tr>
+<th scope="col">Scenario</th><th scope="col">Result</th><th scope="col">Violations</th>
+</tr></thead><tbody>{_sensitivity_rows(result)}</tbody></table></div>
+<h3>Non-dominated objective profiles</h3><div class="table-wrap" role="region"
+aria-label="Non-dominated objective profiles" tabindex="0"><table><caption class="sr-only">
+Sampled non-dominated objective profiles</caption><thead><tr><th scope="col">Profile</th>
+<th scope="col">Cost</th><th scope="col">Prep</th><th scope="col">Preference</th></tr></thead>
+<tbody>{_pareto_rows(result)}</tbody></table></div>
+{_tradeoff_failures(result)}
 <h2>Limitations</h2>{_list([*cut.limitations, *result.strength.limitations, *result.diet.assumptions])}
 <p class="muted">Source/device identifiers and credentials are omitted, but daily observations and derived health
 metrics remain sensitive. Generate the <code>share-safe</code> profile for a minimized summary.</p>

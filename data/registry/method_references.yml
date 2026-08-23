@@ -1,0 +1,63 @@
+schema_version: 1
+accessed: "2026-08-24"
+references:
+  - id: gordon-bootstrap-filter-1993
+    area: latent_state_estimation
+    citation: Gordon NJ, Salmond DJ, Smith AF. Novel approach to nonlinear/non-Gaussian Bayesian state estimation. IEE Proceedings F. 1993;140(2):107-113.
+    url: https://doi.org/10.1049/ip-f-2.1993.0015
+    use_in_cutsignal: Establishes the bootstrap-filter algorithm family used for sequential weighted particles and resampling.
+    does_not_establish: CutSignal's state equations, priors, parameter values, interval calibration, or fitness for health decisions.
+  - id: hall-energy-balance-2011
+    area: body_weight_dynamics
+    citation: Hall KD, et al. Quantification of the effect of energy imbalance on bodyweight. Lancet. 2011;378(9793):826-837.
+    url: https://pubmed.ncbi.nlm.nih.gov/21872751/
+    use_in_cutsignal: Supports treating body-weight response to energy imbalance as dynamic rather than an exact static calorie-to-weight conversion.
+    does_not_establish: That CutSignal implements the Hall model or can prescribe intake, predict an individual's weight, or diagnose metabolic adaptation.
+  - id: niddk-body-weight-planner-model
+    area: body_weight_dynamics
+    citation: National Institute of Diabetes and Digestive and Kidney Diseases. Research Behind the Body Weight Planner.
+    url: https://www.niddk.nih.gov/research-funding/at-niddk/labs-branches/laboratory-biological-modeling/integrative-physiology-section/research/body-weight-planner
+    use_in_cutsignal: Provides the authoritative equations-and-simulator context for the Hall dynamic model used as a conceptual boundary.
+    does_not_establish: Equivalence between the NIDDK model and CutSignal's deliberately simpler latent-trend prototype.
+  - id: schwarz-bic-1978
+    area: change_point_model_selection
+    citation: Schwarz G. Estimating the Dimension of a Model. Annals of Statistics. 1978;6(2):461-464.
+    url: https://doi.org/10.1214/aos/1176344136
+    use_in_cutsignal: Establishes the Bayesian information criterion family used to penalize additional piecewise-linear segments.
+    does_not_establish: That CutSignal's segmentation assumptions are correct for any person's weight series or that a selected boundary is causal.
+  - id: lesuer-e1rm-equations-1997
+    area: estimated_strength
+    citation: LeSuer DA, et al. The Accuracy of Prediction Equations for Estimating 1-RM Performance in the Bench Press, Squat, and Deadlift. Journal of Strength and Conditioning Research. 1997;11(4):211-213.
+    url: https://doi.org/10.1519/1533-4287%281997%29011%3C0211%3ATAOPEF%3E2.3.CO%3B2
+    use_in_cutsignal: Documents exercise-specific error and disagreement among repetition-to-1RM equations, motivating a consensus estimate and visible heuristic spread.
+    does_not_establish: External calibration of CutSignal's median estimate, uncertainty percentage, longitudinal slope, or decisions.
+  - id: zourdos-rir-rpe-2016
+    area: estimated_strength
+    citation: Zourdos MC, et al. Novel Resistance Training-Specific Rating of Perceived Exertion Scale Measuring Repetitions in Reserve. Journal of Strength and Conditioning Research. 2016;30(1):267-275.
+    url: https://pubmed.ncbi.nlm.nih.gov/26049792/
+    use_in_cutsignal: Supports the RPE-to-repetitions-in-reserve interpretation used as an optional effort adjustment.
+    does_not_establish: Accurate RIR for every lifter, exercise, sex, training age, technique, or non-fatiguing set.
+  - id: dersimonian-laird-1986
+    area: cross_exercise_shrinkage
+    citation: DerSimonian R, Laird N. Meta-analysis in clinical trials. Controlled Clinical Trials. 1986;7(3):177-188.
+    url: https://pubmed.ncbi.nlm.nih.gov/3802833/
+    use_in_cutsignal: Establishes the method-of-moments random-effects variance estimator adapted for transparent cross-exercise shrinkage.
+    does_not_establish: That exercises are clinical studies, exchangeable, externally calibrated, or appropriately pooled for every user.
+  - id: bertsimas-sim-2004
+    area: robust_optimization
+    citation: Bertsimas D, Sim M. The Price of Robustness. Operations Research. 2004;52(1):35-53.
+    url: https://doi.org/10.1287/opre.1030.0065
+    use_in_cutsignal: Provides the robustness-versus-conservatism framework against which CutSignal's simpler box uncertainty is described.
+    does_not_establish: That CutSignal implements the Bertsimas-Sim budgeted set or offers probabilistic constraint guarantees.
+  - id: ferguson-diet-lp-2004
+    area: diet_optimization
+    citation: Ferguson EL, Darmon N, Briend A, Premachandra IM. Food-based dietary guidelines can be developed and tested using linear programming analysis. Journal of Nutrition. 2004;134(4):951-957.
+    url: https://pubmed.ncbi.nlm.nih.gov/15051853/
+    use_in_cutsignal: Demonstrates the use of explicit nutrient, palatability, and robustness constraints in a population-specific diet linear program.
+    does_not_establish: Nutritional adequacy, acceptability, availability, adherence, or safe targets for CutSignal's user-supplied foods and constraints.
+  - id: usda-fdc-api-2026
+    area: food_normalization
+    citation: U.S. Department of Agriculture. FoodData Central API Guide and specification.
+    url: https://fdc.nal.usda.gov/api-spec/fdc_api.html
+    use_in_cutsignal: Defines the upstream food-nutrient identifiers, amounts, and unit fields consumed by the optional normalizer.
+    does_not_establish: Accuracy of a particular food record, local serving size, price, availability, or CutSignal's downstream plan.

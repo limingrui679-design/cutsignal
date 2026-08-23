@@ -1,6 +1,6 @@
 # Executable casebook
 
-CutSignal ships eight deterministic synthetic cases. Each case names one decision question, the
+CutSignal ships nine deterministic synthetic cases. Each case names one decision question, the
 capabilities exercised, executable assertions, actual observations, and a limitation. These cases
 test software behavior; they are not real users, population samples, clinical validation, external
 review, adoption, or impact.
@@ -21,6 +21,11 @@ cutsignal cases verify --output artifacts/cases.json
 | `budget-shock` | Modeled bounds pass but stronger price/nutrition shocks can fail | robust MILP, independent validation, stress tests |
 | `vegetarian-allergen-plan` | Tags and a declared soy allergen interact with all plan constraints | filtering, feasibility, variety, post-solve audit |
 | `device-overlap-reconciliation` | Phone and watch step streams overlap | streaming import, max-source reconciliation, quality flag |
+| `generic-schema-migration` | External-shaped aliases, pounds, and duplicate dates cross the generic boundary | schema mapping, unit conversion, aggregation, provenance |
+
+Together the catalog covers typical success, abstention, boundary/outlier behavior, modeled stress
+failure, and a migration-shaped input. The migration fixture is deliberately synthetic and
+vendor-neutral; it is not evidence of native Garmin, Fitbit, or COROS conformance.
 
 The catalog is versioned in `src/cutsignal/resources/cases.yml`; dispatch lives in
 `src/cutsignal/cases.py`. `tests/test_cases.py` requires every catalog entry to have an executable

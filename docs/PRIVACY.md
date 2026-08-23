@@ -39,6 +39,9 @@ CutSignal therefore defaults to a local, single-user workflow.
 - The scanner uses heuristics and cannot certify anonymization.
 - Text files above the complete-scan limit fail the audit for manual review; binary formats are
   skipped except for sensitive filename checks.
+- A broad local directory walk skips declared generated/tool directories such as `artifacts/`,
+  `dist/`, and `.venv`; the release verifier separately enumerates every tracked and non-ignored
+  file, so a publishable file cannot hide behind those directory names.
 - Git history retains a secret after deletion from the working tree.
 - The publication scan rejects common GitHub-token, AWS access-key, private-key, `.env`, and key-file
   signatures, but it remains heuristic and cannot prove that every credential or identifier is absent.

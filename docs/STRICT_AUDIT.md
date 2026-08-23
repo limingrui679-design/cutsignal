@@ -1,5 +1,10 @@
 # Independent strict audit
 
+> Historical review retained for provenance. Its `64/100` and provisional `84/100` scores are not
+> the baseline or result of the 2026-08-24 from-zero audit. The superseding review is
+> [DEEP_AUDIT_2026-08-24.md](DEEP_AUDIT_2026-08-24.md); it uses a newly defined rubric and rerun
+> evidence rather than inheriting this document's conclusions.
+
 This review applies an independent technical, domain-method, product, evidence, and portfolio rubric.
 It is deliberately separate from the repository's all-or-nothing machine engineering score.
 
@@ -24,7 +29,7 @@ validation, real users, adoption, and impact are separate dimensions.
 
 | Field | Value |
 |---|---|
-| Path | `/Users/li/Documents/Codex/2026-08-20/w-x/outputs/cutsignal` |
+| Path | repository root of the audited local checkout; the host-specific path is intentionally not versioned |
 | Branch | `main` |
 | Baseline | `0c0c664` |
 | Reviewed base HEAD | `54b5241c2b4e7b15448aec6766ce61f21af451f4` plus this strict-review change set |

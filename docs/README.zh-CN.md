@@ -18,6 +18,7 @@ CutSignal 把三个原本分散的问题放进一个可审计项目：减脂趋�
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[ui]'
+cutsignal doctor
 cutsignal demo --output artifacts/demo
 cutsignal ui
 ```
@@ -26,9 +27,9 @@ cutsignal ui
 TDEE、训练和菜单细节；`share-safe` 会从结构上删除日期、逐日序列、精确健康指标、
 动作和食品名称及菜单，但保留的派生类别仍可能敏感，也不能保证匿名。
 
-项目内置 8 个可执行合成案例，用来展示缺失摄入时主动拒绝判断、单次水重冲击、力量
+项目内置 9 个可执行合成案例，用来展示缺失摄入时主动拒绝判断、单次水重冲击、力量
 下降与 RPE/训练量共同触发恢复优先、预算冲击、素食与过敏原约束、手机/手表重叠步数
-对账等不同能力：
+对账，以及通用外部形态 CSV 的别名、单位、重复日和来源迁移等不同能力：
 
 ```bash
 cutsignal cases list
@@ -40,5 +41,12 @@ cutsignal cases verify --output artifacts/cases.json
 求解器之外重新核验全部硬约束。五个目标权重产生的是“抽样后的非支配折中集合”，
 不是完整 Pareto 前沿。
 
+`python scripts/evaluate_synthetic.py` 会在 12 个预先固定的已知真值合成情景中，把粒子
+轨迹近期变化率与同窗口 OLS 基线比较，并保留逐情景误差、区间覆盖、Brier 分数和误判。
+这是内部合成压力测试，不是外部校准、群体表现或临床有效性。
+
 项目不决定个人应该摄入多少热量或以多快速度减重，也不能替代医生或注册营养师。
 当前没有声称真实用户、外部评审、临床验证、采用或现实影响。
+
+方法来源、实际借用内容和不能迁移证明的边界见[方法参考与迁移边界](REFERENCES.md)。引用
+文献只说明算法家族或上游字段来源，不构成 CutSignal 的外部校准或临床验证。

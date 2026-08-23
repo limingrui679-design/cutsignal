@@ -67,7 +67,7 @@ def _run_demo(particles: int, optimizer_seconds: float) -> dict[str, object]:
         demo_constraints(),
         cut_config=CutAnalysisConfig(filter=ParticleFilterConfig(particles=particles)),
         diet_time_limit_seconds=optimizer_seconds,
-        pareto_time_limit_seconds=max(1.0, optimizer_seconds / 2),
+        pareto_time_limit_seconds=max(3.0, optimizer_seconds / 2),
     )
     return result.model_dump(mode="json")
 
@@ -112,7 +112,12 @@ def _trend_figure(result: PipelineResult) -> go.Figure:
             name="Observed",
         )
     )
-    figure.update_layout(height=430, margin={"l": 10, "r": 10, "t": 25, "b": 10}, yaxis_title="kg")
+    figure.update_layout(
+        title={"text": "Observed and latent trend weight with 95% interval", "x": 0.01},
+        height=430,
+        margin={"l": 10, "r": 10, "t": 55, "b": 10},
+        yaxis_title="kg",
+    )
     return figure
 
 
@@ -146,7 +151,12 @@ def _tdee_figure(result: PipelineResult) -> go.Figure:
             name="Latent TDEE",
         )
     )
-    figure.update_layout(height=430, margin={"l": 10, "r": 10, "t": 25, "b": 10}, yaxis_title="kcal/day")
+    figure.update_layout(
+        title={"text": "Latent TDEE with 95% interval", "x": 0.01},
+        height=430,
+        margin={"l": 10, "r": 10, "t": 55, "b": 10},
+        yaxis_title="kcal/day",
+    )
     return figure
 
 
@@ -160,6 +170,8 @@ def _sensitivity_figure(result: PipelineResult) -> go.Figure:
             orientation="h",
             marker_color=colors,
             customdata=[item.plateau_probability for item in values],
+            text=[f"{item.plateau_probability:.0%}" for item in values],
+            textposition="auto",
             hovertemplate="%{y}<br>rate=%{x:.3f} kg/wk<br>plateau posterior=%{customdata:.1%}<extra></extra>",
         )
     )
@@ -167,8 +179,9 @@ def _sensitivity_figure(result: PipelineResult) -> go.Figure:
     figure.add_vrect(x0=-band, x1=band, fillcolor="rgba(255,204,102,.12)", line_width=0)
     figure.add_vline(x=0, line_dash="dot", line_color="#93a4bb")
     figure.update_layout(
+        title={"text": "Recent trend across declared sensitivity scenarios", "x": 0.01},
         height=360,
-        margin={"l": 10, "r": 10, "t": 25, "b": 10},
+        margin={"l": 10, "r": 10, "t": 55, "b": 10},
         xaxis_title="Posterior median kg/week",
         yaxis={"autorange": "reversed"},
     )
@@ -191,8 +204,9 @@ def _strength_figure(result: PipelineResult) -> go.Figure:
             )
         )
     figure.update_layout(
+        title={"text": "Exercise-level estimated 1RM", "x": 0.01},
         height=420,
-        margin={"l": 10, "r": 10, "t": 25, "b": 10},
+        margin={"l": 10, "r": 10, "t": 55, "b": 10},
         yaxis_title="Estimated 1RM (kg)",
     )
     return figure
@@ -219,8 +233,9 @@ def _training_load_figure(result: PipelineResult) -> go.Figure:
         )
     )
     figure.update_layout(
+        title={"text": "Weekly training volume and mean intensity", "x": 0.01},
         height=390,
-        margin={"l": 10, "r": 10, "t": 25, "b": 10},
+        margin={"l": 10, "r": 10, "t": 55, "b": 10},
         yaxis={"title": "Volume (kg)"},
         yaxis2={"title": "% e1RM", "overlaying": "y", "side": "right"},
         legend={"orientation": "h"},
@@ -242,11 +257,22 @@ def _diet_figure(result: PipelineResult) -> go.Figure:
             hovertemplate="day %{x}<br>uncertainty span=%{y:.0f} kcal<extra></extra>",
         )
     )
-    figure.add_hline(y=constraints.calories_min, line_dash="dash", line_color="#ffcc66")
-    figure.add_hline(y=constraints.calories_max, line_dash="dash", line_color="#ffcc66")
+    figure.add_hline(
+        y=constraints.calories_min,
+        line_dash="dash",
+        line_color="#ffcc66",
+        annotation_text="minimum",
+    )
+    figure.add_hline(
+        y=constraints.calories_max,
+        line_dash="dash",
+        line_color="#ffcc66",
+        annotation_text="maximum",
+    )
     figure.update_layout(
+        title={"text": "Daily robust calorie bounds", "x": 0.01},
         height=360,
-        margin={"l": 10, "r": 10, "t": 25, "b": 10},
+        margin={"l": 10, "r": 10, "t": 55, "b": 10},
         xaxis_title="Day",
         yaxis_title="kcal",
     )
@@ -271,8 +297,9 @@ def _tradeoff_figure(result: PipelineResult) -> go.Figure:
             },
         )
     ).update_layout(
+        title={"text": "Sampled non-dominated cost and preparation profiles", "x": 0.01},
         height=390,
-        margin={"l": 10, "r": 10, "t": 25, "b": 10},
+        margin={"l": 10, "r": 10, "t": 55, "b": 10},
         xaxis_title="Weekly cost",
         yaxis_title="Weekly preparation minutes",
     )
@@ -340,6 +367,15 @@ def _render_result(result: PipelineResult) -> None:
         st.write("Sampled non-dominated objective profiles (not an exhaustive frontier)")
         st.plotly_chart(_tradeoff_figure(result), width="stretch", key="diet-tradeoffs")
         st.dataframe(pd.DataFrame([item.model_dump() for item in result.diet_pareto]), hide_index=True)
+        if result.diet_tradeoff_failures:
+            st.warning(
+                "The primary plan remains independently validated, but some optional comparison profiles "
+                "produced no incumbent within their time limit."
+            )
+            st.dataframe(
+                pd.DataFrame([item.model_dump() for item in result.diet_tradeoff_failures]),
+                hide_index=True,
+            )
     with data_tab:
         st.write(
             "The analysis core is device-independent. Apple Health is one native adapter; normalized "
@@ -386,7 +422,7 @@ def main() -> None:
         particles = 1_000
         if mode != "Casebook":
             particles = st.slider("Particle count", min_value=500, max_value=10_000, value=1_000, step=500)
-        optimizer_seconds = st.slider("MILP seconds per main solve", 2, 30, 3)
+        optimizer_seconds = st.slider("MILP seconds per main solve", 2, 30, 8)
 
     result: PipelineResult | None = None
     if mode == "Casebook":
@@ -411,8 +447,14 @@ def main() -> None:
         return
     if mode == "Synthetic demo":
         if st.button("Run synthetic demo", type="primary"):
-            with st.spinner("Running five statistical sensitivity scenarios and robust MILPs…"):
-                result = PipelineResult.model_validate(_run_demo(particles, float(optimizer_seconds)))
+            try:
+                with st.spinner("Running five statistical sensitivity scenarios and robust MILPs…"):
+                    result = PipelineResult.model_validate(_run_demo(particles, float(optimizer_seconds)))
+            except CutSignalError as exc:
+                st.error(
+                    "The synthetic optimization did not produce a validated incumbent within the selected "
+                    f"time: {exc}. Increase the MILP time and rerun."
+                )
     else:
         st.write("Upload validated normalized files. Nothing is sent to a CutSignal server.")
         daily_file = st.file_uploader("Daily JSONL", type=["jsonl"], key="daily")

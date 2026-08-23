@@ -1,31 +1,43 @@
 schema_version: 1
+accessed: "2026-08-24"
 sources:
   - id: apple-health-user-export
     role: optional_private_input
     bundled: false
+    homepage: https://support.apple.com/guide/iphone/share-your-health-and-fitness-data-iph5ede58c3d/ios
+    version_or_snapshot: user-generated export; no vendor schema version is asserted
     license_or_terms: user-controlled export; Apple terms apply
     adapter: cutsignal.importers.apple_health
     caveat: multi-device additive measures require reconciliation
+    evidence: [src/cutsignal/importers/apple_health.py, docs/DEVICE_ADAPTERS.md]
   - id: usda-fooddata-central
     role: optional_food_metadata
     bundled: false
     homepage: https://fdc.nal.usda.gov/api-guide/
+    version_or_snapshot: FoodData Central API v1; rolling upstream records
     license_or_terms: public domain / CC0
     caveat: user must supply local price and serving assumptions
+    evidence: [src/cutsignal/importers/food.py, docs/DATA_SOURCES.md]
   - id: open-food-facts
     role: optional_food_metadata
     bundled: false
     homepage: https://world.openfoodfacts.org/data
+    version_or_snapshot: API v3.6; rolling crowdsourced records
     license_or_terms: ODbL and associated content licenses
     caveat: crowdsourced values may be incomplete or inaccurate
+    evidence: [src/cutsignal/importers/food.py, docs/DATA_SOURCES.md]
   - id: openpowerlifting
     role: optional_competition_benchmark
     bundled: false
     homepage: https://openpowerlifting.gitlab.io/opl-csv/
+    version_or_snapshot: rolling latest archive; each download records retrieval time, resolved URL, HTTP validators, bytes, and SHA-256
     license_or_terms: meet data dedicated to the public domain
     caveat: competition weigh-ins are not longitudinal fat-loss ground truth
+    evidence: [src/cutsignal/importers/openpowerlifting.py, docs/DATA_SOURCES.md]
   - id: cutsignal-synthetic-demo
     role: bundled_test_and_demo
-    bundled: generated_deterministically
+    bundled: true
+    version_or_snapshot: CutSignal 0.2.0 fixed-seed generators and versioned case catalog
     license_or_terms: MIT with project code
     caveat: plausible software fixture, not a population sample
+    evidence: [src/cutsignal/synthetic.py, src/cutsignal/resources/cases.yml, src/cutsignal/evaluation.py]

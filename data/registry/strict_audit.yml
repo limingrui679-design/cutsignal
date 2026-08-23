@@ -1,4 +1,5 @@
 schema_version: 1
+superseded_by: data/registry/deep_audit.yml
 audit_date: "2026-08-24"
 rubric: independent_technical_domain_product_evidence_review
 baseline:
