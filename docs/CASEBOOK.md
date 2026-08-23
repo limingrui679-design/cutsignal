@@ -27,6 +27,8 @@ The catalog is versioned in `src/cutsignal/resources/cases.yml`; dispatch lives 
 implementation and makes failures visible rather than silently dropping a case.
 Particle-based cases use a fixed, machine-visible 500-particle configuration so changing a UI demo
 slider cannot silently redefine a case. Solver time limits remain recorded with optimization cases.
+The fixture inputs and assertions are deterministic; a time-limited MILP may select a different
+feasible incumbent, so exact objective values, gaps, and report hashes are not reproducibility gates.
 
 ## How to add a case
 

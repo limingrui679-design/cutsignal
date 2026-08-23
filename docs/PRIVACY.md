@@ -40,6 +40,11 @@ CutSignal therefore defaults to a local, single-user workflow.
 - Text files above the complete-scan limit fail the audit for manual review; binary formats are
   skipped except for sensitive filename checks.
 - Git history retains a secret after deletion from the working tree.
+- The publication scan rejects common GitHub-token, AWS access-key, private-key, `.env`, and key-file
+  signatures, but it remains heuristic and cannot prove that every credential or identifier is absent.
+- `pip-audit` queries the OSV vulnerability service with a bounded network timeout. A service error
+  fails the gate; a clean result only means no known vulnerability was returned for that environment
+  at that time and is not a security audit.
 - Cloud-synced folders may upload local files independently of CutSignal.
 
 ## Safe publication checklist

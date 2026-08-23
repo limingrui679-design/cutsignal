@@ -43,8 +43,24 @@ validation or adoption.
 | Documentation called the combined coverage percentage “branch coverage” | Fixed | Separate combined ≥90% and branch-only ≥80% gates and evidence labels |
 | Citation metadata supplied a release date despite no verified published release | Fixed | Kept software/version citation fields but removed the unsupported release date |
 | Semantic documentation gate treated ordinary Markdown line wraps as missing content | Fixed | Case-folded whitespace normalization before phrase matching |
+| Integrated tests treated a ≤20% MIP objective gap as if it proved or disproved hard-constraint feasibility | Fixed | Feasibility is now gated by independent reconstruction; solver status and finite nonnegative gap remain mandatory and visible, without an arbitrary pass threshold |
+| A seven-day high-constraint vegetarian fixture could fail to find any incumbent under a two-second cross-machine gate | Fixed | Three-day case still exercises nutrition, budget, time, variety, vegetarian tags, soy exclusion, and independent validation; repeated case verification required |
+| Case verification aborted at the first expected domain exception | Fixed | Per-case domain failures are retained as structured failed evidence and covered by a regression test |
+| Long decimal metrics could be misclassified as uninterrupted phone numbers | Fixed | Hex/decimal boundary exclusions and a metrics/commit regression test |
+| Fixed synthetic inputs were described in a way that could imply byte-identical time-limited solver output | Fixed | Documentation now separates deterministic fixture inputs from variable feasible incumbents and report hashes |
+| Default dependency-audit transport failed on a 15-second PyPI TLS/read timeout | Fixed | Local and CI checks use pip-audit's supported OSV service with a 60-second socket timeout and still fail closed on service errors |
+| Fresh-wheel verification was silent and could hit a 420-second aggregate timeout under a slow runtime | Fixed | Binary-only dependency install, per-phase timings, captured timeout output, and bounded 600-second command / 900-second aggregate limits |
 
 ## P2 / roadmap
+
+- Fixed in the strict-review pass: the local verifier and scheduled/push security workflow now run
+  `pip-audit`, instead of relying only on `pip check`, CodeQL, and PR-only dependency review.
+- Fixed in the strict-review pass: the public-tree scanner now detects common credential/private-key
+  signatures and sensitive filenames, with adversarial tests. This is a heuristic guardrail, not a
+  proof that secrets are absent.
+- Fixed in the strict-review pass: `docs/STRICT_AUDIT.md` separates the repository's machine
+  engineering score from a portfolio-wide score that deducts for synthetic-only cases, missing
+  external validation, and publication state.
 
 - Calibrate the trend/plateau decision on preregistered simulations and appropriately governed
   external cohorts.

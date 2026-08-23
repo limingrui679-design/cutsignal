@@ -22,8 +22,12 @@ Validation is layered so that a green UI does not substitute for analytical evid
    coverage remains ≥90%, and branch-only coverage remains ≥80%; both are reported separately.
 8. Eight executable synthetic cases cover distinct decisions and failure modes.
 9. sdist/wheel build, isolated temporary-venv installation, public API and packaged resources,
-   `pip check`, CLI help, claims registry, local documentation links/images, privacy scan,
+   `pip check`, `pip-audit`, CLI help, claims registry, local documentation links/images,
+   privacy/credential scan,
    end-to-end run, and artifact hashes are recorded in `artifacts/verification.json`.
+
+The full verifier may take 15–25 minutes on a cold or slow machine. It prints bounded gate and
+fresh-install phase progress. Network-dependent checks fail closed and do not reuse stale evidence.
 
 ## What “100” means
 

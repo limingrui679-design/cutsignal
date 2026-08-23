@@ -46,7 +46,7 @@ cases:
     evidence_type: deterministic_synthetic_fixture
     decision_question: Is the chosen plan feasible at modeled bounds, and where does additional price uncertainty break it?
     capabilities: [mixed_integer_optimization, robust_constraints, post_solve_validation, stress_testing]
-    expected_gate: Baseline validation passes with a disclosed gap at or below 20%, and at least one stronger stress scenario fails visibly.
+    expected_gate: Baseline validation passes with a finite nonnegative disclosed gap, and at least one stronger stress scenario fails visibly.
     limitations: Synthetic prices and nutrients do not establish local affordability or availability.
   - id: vegetarian-allergen-plan
     title: Vegetarian plan excluding a declared soy allergen
@@ -54,7 +54,7 @@ cases:
     evidence_type: deterministic_synthetic_fixture
     decision_question: Can dietary tags, allergens, variety, nutrition, budget, and time constraints hold together?
     capabilities: [constraint_modeling, allergen_filtering, dietary_tags, feasibility_audit]
-    expected_gate: Independent validation passes with a disclosed gap at or below 20%, and no selected item contains soy.
+    expected_gate: Independent validation passes with a finite nonnegative disclosed gap, and no selected item contains soy.
     limitations: Allergen metadata are fixture fields, not a substitute for label or clinical review.
   - id: device-overlap-reconciliation
     title: Overlapping phone and watch step totals

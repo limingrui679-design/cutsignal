@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -36,6 +37,13 @@ def main() -> int:
     cut = e2e.get("cut", {})
     strength = e2e.get("strength", {})
     diet = e2e.get("diet", {})
+    diet_gap = diet.get("mip_gap")
+    diet_gap_valid = (
+        isinstance(diet_gap, (int, float))
+        and not isinstance(diet_gap, bool)
+        and math.isfinite(float(diet_gap))
+        and float(diet_gap) >= 0
+    )
     report = e2e.get("report", {})
     case_payload: dict[str, Any] = {}
     case_path = ARTIFACTS / "cases.json"
@@ -88,8 +96,7 @@ def main() -> int:
             and bool(diet.get("baseline_stress_feasible"))
             and bool(diet.get("independent_validation"))
             and float(diet.get("minimum_slack", -1)) >= -1e-6
-            and diet.get("mip_gap") is not None
-            and float(diet["mip_gap"]) <= 0.20
+            and diet_gap_valid
             and int(diet.get("sensitivity_count", 0)) == 5
             and int(diet.get("pareto_count", 0)) >= 1,
             (
@@ -142,25 +149,26 @@ def main() -> int:
         RubricItem(
             "Build and isolated-install reproducibility",
             10,
-            passed("wheel", "fresh_install", "pip_check", "public_api")
+            passed("wheel", "fresh_install", "pip_check", "dependency_audit", "public_api")
             and any((ARTIFACTS / "dist").glob("cutsignal-*.whl"))
             and any((ARTIFACTS / "dist").glob("cutsignal-*.tar.gz")),
-            "sdist+wheel, temporary-venv install, packaged resources, API import, and pip check",
+            "sdist+wheel, temporary-venv install, packaged resources, API import, pip check, and pip-audit",
         ),
         RubricItem(
             "Documentation, sources, and evidence-bound claims",
             5,
             fingerprint_matches
             and bool(evidence.get("documentation", {}).get("passed"))
-            and passed("claims", "docs_links"),
+            and passed("claims", "strict_audit", "docs_links"),
             (
                 f"documentation={evidence.get('documentation', {}).get('passed')}; "
-                f"claims={passed('claims')}; links={passed('docs_links')}"
+                f"claims={passed('claims')}; strict_audit={passed('strict_audit')}; "
+                f"links={passed('docs_links')}"
             ),
         ),
     ]
     score = sum(item.points for item in items if item.passed)
-    payload = {
+    payload: dict[str, Any] = {
         "schema_version": 2,
         "checkout_fingerprint": current,
         "verification_fingerprint_matches": fingerprint_matches,

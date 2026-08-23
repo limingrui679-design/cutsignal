@@ -171,7 +171,7 @@ def demo(
     optimizer_seconds: Annotated[float, typer.Option(min=1, max=300)] = 5.0,
     pareto_seconds: Annotated[float, typer.Option(min=1, max=120)] = 2.0,
 ) -> None:
-    """Generate deterministic synthetic inputs and a complete offline report."""
+    """Generate fixed synthetic inputs and a complete offline report."""
     daily = generate_daily_demo()
     strength = generate_strength_demo(daily)
     foods = generate_food_demo()

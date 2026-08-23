@@ -12,6 +12,9 @@ SENSITIVE_NAME_PATTERNS = (
     re.compile(r"apple.*health.*\.zip$", re.IGNORECASE),
     re.compile(r"hevy.*\.csv$", re.IGNORECASE),
     re.compile(r"strong.*\.csv$", re.IGNORECASE),
+    re.compile(r"^\.env(?:\..*)?$", re.IGNORECASE),
+    re.compile(r"^(?:id_rsa|id_dsa|id_ecdsa|id_ed25519)$", re.IGNORECASE),
+    re.compile(r"\.(?:key|p12|pfx)$", re.IGNORECASE),
 )
 SENSITIVE_CONTENT_PATTERNS = {
     "email": re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE),
@@ -19,13 +22,16 @@ SENSITIVE_CONTENT_PATTERNS = {
     # This avoids treating ISO dates and nearby metric values as phone numbers.
     "phone": re.compile(
         r"(?<!\d)(?:\+\d{1,3}[ .-]+)?(?:\(\d{2,4}\)|\d{2,4})[ .-]+\d{3,4}[ .-]+\d{4}(?!\d)"
-        r"|(?<!\d)\d{10,15}(?!\d)"
+        r"|(?<![A-Fa-f0-9.])\d{10,15}(?![A-Fa-f0-9.])"
     ),
     # Split scanner signatures so auditing this source file does not match the
     # literal definitions themselves.
     "apple_health_me": re.compile("<" + r"Me\b", re.IGNORECASE),
     "date_of_birth": re.compile("date" + "OfBirth=", re.IGNORECASE),
     "medical_record": re.compile("clinical" + "record|HKClinical" + "TypeIdentifier", re.IGNORECASE),
+    "github_token": re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,255}|github_pat_[A-Za-z0-9_]{20,255})\b"),
+    "aws_access_key": re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
+    "private_key": re.compile("-----BEGIN " + r"(?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 }
 SKIPPED_DIRECTORY_NAMES = {".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".venv", "__pycache__"}
 
@@ -101,7 +107,18 @@ def audit_paths(paths: list[Path], *, max_text_bytes: int = 2_000_000) -> Privac
                     findings.append(
                         PrivacyFinding(
                             path=relative,
-                            severity="high" if name in {"apple_health_me", "date_of_birth"} else "medium",
+                            severity=(
+                                "high"
+                                if name
+                                in {
+                                    "apple_health_me",
+                                    "date_of_birth",
+                                    "github_token",
+                                    "aws_access_key",
+                                    "private_key",
+                                }
+                                else "medium"
+                            ),
                             finding=f"possible sensitive content: {name}",
                             remediation="replace with synthetic data or redact before publication",
                         )

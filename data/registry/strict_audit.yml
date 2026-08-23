@@ -1,0 +1,168 @@
+schema_version: 1
+audit_date: "2026-08-24"
+rubric: independent_technical_domain_product_evidence_review
+baseline:
+  commit: 0c0c664
+  score: 64
+  status: reproduced_in_temporary_worktree
+  verification:
+    ruff: passed
+    format: passed
+    mypy: passed
+    pytest: "31 passed, 1 failed"
+    combined_coverage_percent: 91.93412162162163
+    statement_coverage_percent: 93.6830835117773
+    branch_coverage_percent: 85.4
+    build: passed
+    verifier: failed
+    e2e: failed
+    failure_boundary: "A two-second MILP incumbent was labeled feasible_time_limit while the old test required optimal; the integrated run then raised on a solver time limit."
+current:
+  based_on_commit: 54b5241
+  score: 84
+  status: prepublication_candidate_pending_full_verifier
+  machine_engineering_score: pending_full_verifier
+  publication_state: not_established
+
+dimensions:
+  - id: problem_definition
+    name: Problem definition and target user
+    maximum: 8
+    baseline: 7
+    current: 8
+    evidence_level: E2
+    evidence: [README.md, docs/LIMITATIONS.md]
+    remaining_deduction: none
+  - id: implementation
+    name: Implementation and system completeness
+    maximum: 12
+    baseline: 9
+    current: 12
+    evidence_level: E1
+    evidence: [src/cutsignal/pipeline.py, src/cutsignal/cases.py, scripts/e2e_smoke.py]
+    remaining_deduction: none for the declared local alpha scope
+  - id: methods
+    name: Method and domain correctness
+    maximum: 12
+    baseline: 8
+    current: 11
+    evidence_level: E1
+    evidence: [docs/METHODS.md, src/cutsignal/analysis/state_space.py, src/cutsignal/analysis/strength.py, src/cutsignal/optimization/diet.py]
+    remaining_deduction: no external calibration or controlled strength validation
+  - id: data_cases
+    name: Data and case quality
+    maximum: 10
+    baseline: 5
+    current: 7
+    evidence_level: E2
+    evidence: [docs/CASEBOOK.md, data/registry/sources.yml, src/cutsignal/resources/cases.yml]
+    remaining_deduction: bundled cases are deterministic synthetic fixtures; no suitable observed longitudinal fat-loss benchmark is bundled
+  - id: evidence_reproducibility
+    name: Evidence chain and reproducibility
+    maximum: 13
+    baseline: 9
+    current: 13
+    evidence_level: E1
+    evidence: [scripts/verify_project.py, scripts/fresh_install_smoke.py, data/registry/claims.yml, docs/VALIDATION.md]
+    remaining_deduction: none for local reproducibility
+  - id: testing_engineering
+    name: Testing, reliability, and engineering quality
+    maximum: 11
+    baseline: 8
+    current: 11
+    evidence_level: E1
+    evidence: [tests/test_cases.py, tests/test_diet_optimizer.py, tests/test_pipeline_reporting_privacy.py, scripts/verify_project.py]
+    remaining_deduction: none for the declared local alpha scope
+  - id: security_privacy
+    name: Security, privacy, and governance
+    maximum: 8
+    baseline: 4
+    current: 8
+    evidence_level: E1
+    evidence: [SECURITY.md, docs/PRIVACY.md, src/cutsignal/privacy.py, .github/workflows/security.yml]
+    remaining_deduction: scanner is heuristic and no external security review is claimed
+  - id: ux_docs
+    name: User experience, accessibility, and documentation
+    maximum: 7
+    baseline: 6
+    current: 6
+    evidence_level: E1
+    evidence: [README.md, docs/README.zh-CN.md, src/cutsignal/app.py, scripts/ui_smoke.py]
+    remaining_deduction: no independent usability or accessibility study
+  - id: release_portability
+    name: Release, portability, and public verifiability
+    maximum: 6
+    baseline: 3
+    current: 3
+    evidence_level: E2
+    evidence: [pyproject.toml, .github/workflows/ci.yml, scripts/fresh_install_smoke.py]
+    remaining_deduction: no verified public remote, public CI result, tag, or release
+  - id: external_validity
+    name: External validity, real use, and independent validation
+    maximum: 8
+    baseline: 0
+    current: 0
+    evidence_level: E2
+    evidence: [docs/VALIDATION.md, docs/LIMITATIONS.md]
+    remaining_deduction: no independent review, reproduction, real users, adoption, deployment, or impact evidence
+  - id: claim_discipline
+    name: Claim discipline and portfolio value
+    maximum: 5
+    baseline: 5
+    current: 5
+    evidence_level: E2
+    evidence: [README.md, data/registry/claims.yml, docs/SCORING.md]
+    remaining_deduction: none
+
+caps:
+  - id: core_flow_failure
+    maximum_score: 69
+    baseline_applies: true
+    current_applies: false
+    reason: baseline integrated run failed on the time-limited diet solver; current E2E passes
+  - id: core_test_failure
+    maximum_score: 79
+    baseline_applies: true
+    current_applies: false
+    reason: baseline had one core optimizer test failure; current suite passes
+  - id: serious_privacy_problem
+    maximum_score: 69
+    baseline_applies: true
+    current_applies: false
+    reason: baseline report copy and serialized daily health fields were inconsistent; distinct schemas now have negative-field tests
+  - id: synthetic_described_as_real
+    maximum_score: 69
+    baseline_applies: false
+    current_applies: false
+    reason: every bundled fixture is explicitly labeled synthetic
+  - id: correlation_described_as_causation
+    maximum_score: 69
+    baseline_applies: false
+    current_applies: false
+    reason: the project makes no causal outcome claim
+  - id: internal_tests_described_as_impact
+    maximum_score: 84
+    baseline_applies: false
+    current_applies: false
+    reason: engineering evidence is explicitly separated from users, adoption, and impact
+  - id: no_external_or_public_evidence
+    maximum_score: 93
+    baseline_applies: true
+    current_applies: true
+    reason: no public remote or qualifying external evidence is established in this prepublication state
+  - id: page_without_core_logic
+    maximum_score: 59
+    baseline_applies: false
+    current_applies: false
+    reason: the analytical core and executable workflows are implemented
+
+external_evidence:
+  independent_method_reviews: 0
+  independent_reproductions: 0
+  structured_usability_participants: 0
+  independent_accessibility_reviews: 0
+  documented_real_users: 0
+  production_deployments: 0
+  organizational_adoptions: 0
+  real_world_impact_evaluations: 0
+  public_stars: not_observed

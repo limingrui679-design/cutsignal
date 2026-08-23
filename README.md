@@ -33,7 +33,7 @@ The three engines are integrated in a precedence rule: inadequate data first, re
 food-data quality third, and only then a possible plan review. This prevents a scale-only signal from
 silently overriding missing data or declining training performance.
 
-## Run the deterministic demo
+## Run the fixed synthetic demo
 
 CutSignal requires Python 3.11 or newer.
 
@@ -48,7 +48,9 @@ cutsignal demo --output artifacts/demo
 cutsignal ui
 ```
 
-The generated values are deterministic synthetic fixtures, not a real person or population sample.
+The generated input values are deterministic synthetic fixtures, not a real person or population
+sample. A time-limited MILP can return different independently validated feasible incumbents across
+runs or machines; its status and gap remain visible, and byte-identical reports are not promised.
 The demo creates:
 
 - normalized daily, strength, food, and constraint inputs;
@@ -63,7 +65,7 @@ anonymity; inspect it before sharing.
 
 ### Visual tour
 
-All screenshots below were rendered from the bundled deterministic synthetic demo.
+All screenshots below were rendered from the bundled fixed synthetic demo.
 
 ![Trend weight with observed values and posterior interval](docs/assets/dashboard-fat-loss.jpg)
 
@@ -258,9 +260,12 @@ python scripts/score_project.py
 
 The verifier creates machine-readable evidence for the exact checkout. Its gates include lint,
 format, strict typing, tests and branch coverage, sdist/wheel builds, isolated temporary-venv wheel
-installation, public-API import, packaged case resources, `pip check`, UI startup, eight executable
-cases, privacy scan, claims-registry validation, semantic documentation checks, and an end-to-end
+installation, public-API import, packaged case resources, `pip check`, `pip-audit`, UI startup, eight executable
+cases, privacy/credential scan, claims-registry validation, semantic documentation checks, and an end-to-end
 synthetic run. Repository-local Markdown links and image assets are checked separately.
+On a cold or slow machine, the full verifier can take 15–25 minutes because it creates a fresh
+virtual environment and queries a vulnerability service. Each gate and fresh-install phase prints
+bounded progress; a network timeout fails instead of reusing an older result.
 
 Coverage evidence reports the combined metric and branch-only metric separately; the score requires
 at least 90% combined coverage and 80% branch-only coverage.

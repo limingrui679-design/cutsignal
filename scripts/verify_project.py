@@ -52,8 +52,15 @@ def checkout_fingerprint() -> str:
     return digest.hexdigest()
 
 
+def _captured_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+
+
 def _run(name: str, command: list[str], timeout: int = 180) -> dict[str, Any]:
     started = time.monotonic()
+    print(f"[verify] {name}: running", flush=True)
     environment = os.environ.copy()
     environment["PYTHONHASHSEED"] = "0"
     try:
@@ -67,7 +74,7 @@ def _run(name: str, command: list[str], timeout: int = 180) -> dict[str, Any]:
             check=False,
         )
         output = (result.stdout + "\n" + result.stderr).strip()
-        return {
+        evidence = {
             "name": name,
             "passed": result.returncode == 0,
             "returncode": result.returncode,
@@ -75,15 +82,21 @@ def _run(name: str, command: list[str], timeout: int = 180) -> dict[str, Any]:
             "command": command,
             "output_tail": output[-12_000:],
         }
+        state = "passed" if evidence["passed"] else "failed"
+        print(f"[verify] {name}: {state} ({evidence['duration_seconds']}s)", flush=True)
+        return evidence
     except subprocess.TimeoutExpired as exc:
-        return {
+        captured = "\n".join(part for part in (_captured_text(exc.stdout), _captured_text(exc.stderr)) if part)
+        evidence = {
             "name": name,
             "passed": False,
             "returncode": None,
             "duration_seconds": round(time.monotonic() - started, 3),
             "command": command,
-            "output_tail": f"timed out: {exc}",
+            "output_tail": (f"timed out: {exc}\n{captured}").strip()[-12_000:],
         }
+        print(f"[verify] {name}: timed out ({evidence['duration_seconds']}s)", flush=True)
+        return evidence
 
 
 def main() -> int:
@@ -111,9 +124,25 @@ def main() -> int:
         "fresh_install": _run(
             "fresh_install",
             [python, "scripts/fresh_install_smoke.py"],
-            timeout=420,
+            timeout=900,
         ),
         "pip_check": _run("pip_check", [python, "-m", "pip", "check"]),
+        "dependency_audit": _run(
+            "dependency_audit",
+            [
+                python,
+                "-m",
+                "pip_audit",
+                "--skip-editable",
+                "--progress-spinner",
+                "off",
+                "--vulnerability-service",
+                "osv",
+                "--timeout",
+                "60",
+            ],
+            timeout=240,
+        ),
         "public_api": _run(
             "public_api",
             [
@@ -129,6 +158,7 @@ def main() -> int:
             ],
         ),
         "claims": _run("claims", [python, "scripts/verify_claims.py"]),
+        "strict_audit": _run("strict_audit", [python, "scripts/verify_strict_audit.py"]),
         "docs_links": _run("docs_links", [python, "scripts/verify_docs.py"]),
         "cases": _run(
             "cases",
@@ -146,7 +176,7 @@ def main() -> int:
             timeout=240,
         ),
         "cli": _run("cli", [python, "-m", "cutsignal", "--help"]),
-        "ui": _run("ui", [python, "scripts/ui_smoke.py"]),
+        "ui": _run("ui", [python, "scripts/ui_smoke.py"], timeout=300),
         "e2e": _run(
             "e2e",
             [python, "scripts/e2e_smoke.py", "--output", "artifacts/e2e"],
@@ -182,8 +212,10 @@ def main() -> int:
         "docs/VALIDATION.md",
         "docs/CASEBOOK.md",
         "docs/PROJECT_AUDIT.md",
+        "docs/STRICT_AUDIT.md",
         "data/registry/sources.yml",
         "data/registry/claims.yml",
+        "data/registry/strict_audit.yml",
     ]
     docs = {
         "passed": all(
@@ -198,6 +230,7 @@ def main() -> int:
         "docs/PRIVACY.md": ["private", "share-safe", "does not guarantee anonymity"],
         "docs/CASEBOOK.md": ["deterministic synthetic", "device-overlap-reconciliation"],
         "docs/PROJECT_AUDIT.md": ["P0", "P1", "External conditions"],
+        "docs/STRICT_AUDIT.md": ["A. Final conclusion", "D. Strict 100-point scorecard", "I. Safe public claims"],
     }
     semantic_missing: list[str] = []
     for relative, phrases in semantic_requirements.items():

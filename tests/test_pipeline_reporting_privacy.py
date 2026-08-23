@@ -113,3 +113,33 @@ def test_privacy_audit_finds_names_and_content(tmp_path) -> None:
     bounded = audit_paths([large_text], max_text_bytes=8)
     assert not bounded.passed
     assert any("complete-scan limit" in item.finding for item in bounded.findings)
+
+
+def test_privacy_audit_finds_credentials_and_private_keys(tmp_path) -> None:
+    token_file = tmp_path / "configuration.txt"
+    token = "gh" + "p_" + "A" * 40
+    token_file.write_text(f"credential={token}", encoding="utf-8")
+    private_key = tmp_path / "renamed.txt"
+    private_key.write_text("-----BEGIN " + "PRIVATE KEY-----\nsynthetic", encoding="utf-8")
+    environment = tmp_path / ".env.production"
+    environment.write_text("SYNTHETIC=true", encoding="utf-8")
+
+    result = audit_paths([tmp_path])
+
+    assert not result.passed
+    findings = {item.finding for item in result.findings}
+    assert "possible sensitive content: github_token" in findings
+    assert "possible sensitive content: private_key" in findings
+    assert any(item.path.endswith(".env.production") for item in result.findings)
+
+
+def test_privacy_audit_does_not_treat_metrics_or_commit_ids_as_phones(tmp_path) -> None:
+    evidence = tmp_path / "verification.yml"
+    evidence.write_text(
+        "coverage: 91.93412162162163\ncommit: 54b5241c2b4e7b15448aec6766ce61f21af451f4\n",
+        encoding="utf-8",
+    )
+
+    result = audit_paths([evidence])
+
+    assert result.passed
