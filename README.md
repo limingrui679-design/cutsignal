@@ -5,6 +5,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f.svg)](LICENSE)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-f0ad4e.svg)](CHANGELOG.md)
+[![CI](https://github.com/limingrui679-design/cutsignal/actions/workflows/ci.yml/badge.svg)](https://github.com/limingrui679-design/cutsignal/actions/workflows/ci.yml)
+[![Security](https://github.com/limingrui679-design/cutsignal/actions/workflows/security.yml/badge.svg)](https://github.com/limingrui679-design/cutsignal/actions/workflows/security.yml)
 
 CutSignal turns noisy weight, intake, training, and food data into an evidence-gated decision:
 continue, collect more data, review recovery first, or consider reviewing the plan. It is
@@ -41,7 +43,8 @@ silently overriding missing data or declining training performance.
 CutSignal requires Python 3.11 or newer.
 
 ```bash
-# From this source checkout (a public remote is not asserted by this repository)
+git clone https://github.com/limingrui679-design/cutsignal.git
+cd cutsignal
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 python -m pip install --upgrade pip

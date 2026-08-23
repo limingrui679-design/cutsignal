@@ -213,6 +213,7 @@ def main() -> int:
                 "claims",
                 "method_references",
                 "source_registry",
+                "repository_metadata",
                 "strict_audit",
                 "deep_audit",
                 "docs_links",
@@ -221,6 +222,7 @@ def main() -> int:
                 f"documentation={evidence.get('documentation', {}).get('passed')}; "
                 f"claims={passed('claims')}; references={passed('method_references')}; "
                 f"sources={passed('source_registry')}; "
+                f"repository={passed('repository_metadata')}; "
                 f"strict_audit={passed('strict_audit')}; "
                 f"deep_audit={passed('deep_audit')}; "
                 f"links={passed('docs_links')}"

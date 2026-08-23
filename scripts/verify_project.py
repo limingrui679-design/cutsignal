@@ -204,6 +204,10 @@ def main() -> int:
             "version_consistency",
             [python, "scripts/verify_versions.py"],
         ),
+        "repository_metadata": _run(
+            "repository_metadata",
+            [python, "scripts/verify_repository_metadata.py"],
+        ),
         "claims": _run("claims", [python, "scripts/verify_claims.py"]),
         "method_references": _run(
             "method_references",
@@ -279,6 +283,7 @@ def main() -> int:
         "docs/TUTORIAL.md",
         "docs/TROUBLESHOOTING.md",
         "SUPPORT.md",
+        ".github/ISSUE_TEMPLATE/config.yml",
         "data/registry/sources.yml",
         "data/registry/method_references.yml",
         "data/registry/claims.yml",

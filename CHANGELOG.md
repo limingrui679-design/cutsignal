@@ -11,6 +11,8 @@ versioning while the public API stabilizes.
   errors, interval coverage, Brier score, classification failures, and bounded claims.
 - Ninth schema-migration case, data card, benchmark matrix, first-analysis tutorial,
   troubleshooting guide, support boundary, and `cutsignal doctor` diagnostics.
+- Verified public repository metadata, CI/security badges, typed issue routing, and confidential
+  vulnerability-reporting links with a consistency gate.
 - Accessible report navigation, chart descriptions, responsive labeled tables, chart titles, and
   print/mobile styles.
 

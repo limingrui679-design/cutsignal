@@ -10,8 +10,8 @@ baseline:
   evidence_note: Generated evidence is ignored by Git and retained locally under artifacts/deep-audit-baseline.
 current:
   score: 87
-  status: local_verifier_passed_publication_pending
-  publication_state: not_established_in_this_registry
+  status: public_metadata_verifier_passed_push_pending
+  publication_state: public_remote_created_push_and_actions_pending
   score_if_remote_sha_and_required_actions_are_verified: 88
 
 dimensions:
@@ -202,6 +202,12 @@ findings:
     summary: The engineering score consumed mutable generated files and a nonempty distribution directory could expose a stale wheel.
     resolution: Reset verifier-owned outputs, require one rebuilt wheel, record SHA-256 and byte size for seven critical artifacts, require a complete manifest and matching installed-wheel hash, bind every score dependency to those records, and treat pending P0/P1 regression as open.
     evidence: [scripts/verify_project.py, scripts/fresh_install_smoke.py, scripts/score_project.py, scripts/verify_deep_audit.py]
+  - id: DA-P1-015
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: Once the public repository existed, clone, package, citation, issue, and confidential-security URLs could drift independently.
+    resolution: Restore only API-verified public URLs and enforce one repository identity across six metadata/support surfaces under the full verifier.
+    evidence: [README.md, pyproject.toml, CITATION.cff, SECURITY.md, SUPPORT.md, scripts/verify_repository_metadata.py]
   - id: DA-P2-001
     priority: P2
     status: fixed_and_full_regression_verified

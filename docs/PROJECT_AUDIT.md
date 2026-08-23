@@ -26,7 +26,7 @@ validation or adoption.
 | Public capability statements were not bound to a machine-readable evidence registry | Fixed | `data/registry/claims.yml` plus registry validator |
 | Runtime method parameters relied on unenforced type annotations | Fixed | Explicit recent-window and plateau-band bounds with rejection tests |
 | Expected CLI/UI input failures surfaced implementation tracebacks | Fixed | Stable exit code and concise input errors for the CLI; user-facing errors in the upload UI |
-| Setup metadata asserted a public remote that has not been verified | Fixed | Removed clone, homepage, issue, and citation URLs until publication is independently confirmed |
+| Setup metadata asserted a public remote that had not been verified | Fixed | Withheld URLs before publication; restored clone, package, citation, issue, and security links only after the public repository API returned the expected identity and visibility; a consistency gate now prevents drift |
 | Verification fingerprint included ignored virtual-environment state | Fixed | Fingerprint now covers Git-tracked and non-ignored untracked files only |
 | Independent diet validation accepted out-of-range days and ambiguous food identifiers | Fixed | Explicit invalid-day, nonpositive-serving, and duplicate-ID checks with mutation tests |
 | JSONL export materialized every record before writing | Fixed | Same-directory streamed temporary writes with `fsync`, atomic replace, and a failure-preservation test |

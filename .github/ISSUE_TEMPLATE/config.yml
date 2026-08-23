@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: https://github.com/limingrui679-design/cutsignal/security/advisories/new
+    about: Report a vulnerability privately; never attach personal health or credential data.
+  - name: Support and troubleshooting
+    url: https://github.com/limingrui679-design/cutsignal/blob/main/SUPPORT.md
+    about: Read support boundaries and local diagnostics before opening an issue.

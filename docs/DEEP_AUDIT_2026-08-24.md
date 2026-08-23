@@ -86,13 +86,15 @@ not copied.
 | DA-P1-012 | P1 | package, metadata, citation, and changelog versions could drift silently | add a five-surface consistency gate and isolated-install assertion | full verifier passed |
 | DA-P1-013 | P1 | source records lacked explicit version/snapshot boundaries and machine validation | enrich all five records and validate roles, URLs, licenses, caveats, versions, and evidence paths | full verifier passed |
 | DA-P1-014 | P1 | scoring consumed mutable generated files and the distribution directory could expose a stale wheel | reset verifier-owned outputs, require one rebuilt wheel, bind seven artifacts by SHA-256/size, and match the installed-wheel hash | complete implementation regression and 7/7 manifest gate passed; status gate then closed |
+| DA-P1-015 | P1 | public clone/package/citation/issue/security URLs could drift after repository creation | one API-verified repository identity across six metadata and support surfaces | complete implementation regression passed; status gate then closed |
 | DA-P2-001 | P2 | console evaluation output hid classification failures unless the JSON was opened | print accuracy/FP/FN and document 83.3% coverage plus three linked-method false negatives | full verifier passed |
 | DA-P2-002 | P2 | documented root privacy command failed on generated local evidence after verification | separate broad-walk generated/cache exclusions from exact publishable-checkout enumeration | full verifier passed |
 
 No known P0 was found, and no locally fixable P0/P1 remains open. DA-P1-014 was found during
 post-verifier manual review. With the finding still marked pending, the next complete regression
 passed every implementation check and the 7/7 artifact-manifest gate while only the audit-status
-gate failed; the finding was closed afterward.
+gate failed; the finding was closed afterward. DA-P1-015 followed the same two-stage closure: the
+public-metadata regression passed every implementation gate before its status was changed.
 
 ## F. Vertical method and case depth
 
@@ -130,10 +132,11 @@ gate failed; the finding was closed afterward.
 
 ## H. Verification status
 
-The complete modified-checkout implementation regression passed 21 of 22 executable checks plus
+The complete public-metadata implementation regression passed 22 of 23 executable checks plus
 privacy, required-documentation, and the 7/7 artifact-manifest gate on macOS/Python 3.12.13. The
-sole failure was the deliberately pending DA-P1-014 audit-status gate, which was closed only after
-the run. It recorded 53 passing tests, 91.3095% combined
+sole failure was the deliberately pending DA-P1-015 audit-status gate, which was closed only after
+the run. The earlier DA-P1-014 regression used the same fail-before-close pattern. The latest run
+recorded 53 passing tests, 91.3095% combined
 coverage, 93.2534% statement coverage, and 83.8150% branch-only coverage; a wheel and source
 distribution build; an isolated wheel install; `pip check`; OSV dependency audit with no known
 vulnerabilities found; 9/9 cases; Streamlit AppTest; and the 112-day E2E workflow. The rebuilt wheel
@@ -144,7 +147,8 @@ The 12-run synthetic grid produced linked-particle MAE 0.0557 kg/week, 83.3% int
 Brier 0.0778, 75.0% plateau classification accuracy, and three false negatives; OLS produced MAE
 0.3324 kg/week, 66.7% coverage, Brier 0.2333, 66.7% accuracy, and four false negatives. These
 aggregates describe only the fixed internal scenario grid and are not external calibration. The
-screenshots were regenerated and visually inspected locally. Remote SHA and terminal CI remain
+screenshots were regenerated and visually inspected locally. The public repository identity and
+security-reporting configuration were API-verified; pushed remote SHA and terminal CI remain
 separate publication evidence and are not asserted here.
 
 ## I. Independent score

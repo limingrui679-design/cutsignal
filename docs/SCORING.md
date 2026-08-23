@@ -14,7 +14,7 @@ hide a failed privacy, method, or reproducibility gate.
 | Static analysis and formatting | 8 | Ruff lint/format and strict mypy |
 | CLI, casebook, and local UI | 5 | CLI help and doctor, nine executable cases, Streamlit application-test startup |
 | Build and isolated-install reproducibility | 10 | sdist/wheel, temporary-venv install, package resources/API, `pip check`, `pip-audit` |
-| Documentation, sources, and claims | 5 | Required/semantic docs, source registry, evidence-bound claims registry |
+| Documentation, sources, and claims | 5 | Required/semantic docs, repository/source/method registries, evidence-bound claims |
 
 `verify_project.py` fingerprints the checkout (excluding generated artifacts and local caches),
 clears only its declared output paths before rebuilding, and records command, return code, duration,
