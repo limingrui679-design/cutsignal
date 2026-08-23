@@ -48,7 +48,7 @@ ui = [
 ]
 dev = [
   "build>=1.2,<2",
-  "mypy>=1.14,<2",
+  "mypy>=1.14,<3",
   "pandas-stubs>=2.2",
   "pip-audit>=2.10,<3",
   "plotly>=5.24,<7",
