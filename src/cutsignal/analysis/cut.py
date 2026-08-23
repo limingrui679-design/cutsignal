@@ -7,13 +7,13 @@ from typing import Annotated, Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
-from scipy.stats import norm
 
 from cutsignal.analysis.changepoints import detect_change_points
 from cutsignal.analysis.state_space import (
     ParticleFilterConfig,
+    ParticleFilterRun,
     StateEstimate,
-    run_particle_filter,
+    run_particle_filter_diagnostics,
 )
 from cutsignal.models import DailyObservation
 
@@ -41,6 +41,7 @@ class ChangePointResult(BaseModel):
 
 class SensitivityResult(BaseModel):
     scenario: str
+    random_seed: int
     final_tdee_kcal: float
     tdee_interval_width_kcal: float
     trend_kg_per_week: float
@@ -69,6 +70,8 @@ class CutAnalysisResult(BaseModel):
     latest_trend_kg_per_week: float
     trend_interval_kg_per_week: tuple[float, float]
     plateau_probability: float
+    rate_posterior_effective_sample_size: float
+    rate_posterior_method: str
     latest_tdee_kcal: float
     latest_tdee_interval_kcal: tuple[float, float]
     state_estimates: list[StateEstimate]
@@ -85,24 +88,6 @@ def _completeness(observations: list[DailyObservation], field: str) -> float:
     days = (end - start).days + 1
     present = len({item.date for item in observations if getattr(item, field) is not None})
     return present / days
-
-
-def _rate_distribution(
-    estimates: list[StateEstimate], window_days: int, band: float
-) -> tuple[float, float, float, float]:
-    end_index = len(estimates) - 1
-    start_index = max(0, end_index - window_days)
-    start = estimates[start_index]
-    end = estimates[end_index]
-    elapsed = max((end.date - start.date).days, 1)
-    mean = (end.trend_weight_median_kg - start.trend_weight_median_kg) * 7 / elapsed
-    start_sd = (start.trend_weight_upper_kg - start.trend_weight_lower_kg) / (2 * 1.96)
-    end_sd = (end.trend_weight_upper_kg - end.trend_weight_lower_kg) / (2 * 1.96)
-    sd = max(np.hypot(start_sd, end_sd) * 7 / elapsed, 1e-6)
-    lower = float(mean - 1.96 * sd)
-    upper = float(mean + 1.96 * sd)
-    plateau = float(norm.cdf((band - mean) / sd) - norm.cdf((-band - mean) / sd))
-    return float(mean), lower, upper, float(np.clip(plateau, 0, 1))
 
 
 def _decision(
@@ -208,31 +193,43 @@ def _scenario(
     observations: list[DailyObservation],
     filter_config: ParticleFilterConfig,
     cut_config: CutAnalysisConfig,
+    run: ParticleFilterRun | None = None,
 ) -> SensitivityResult:
-    estimates = run_particle_filter(observations, filter_config)
-    rate, _, _, plateau = _rate_distribution(
-        estimates, cut_config.trend_window_days, cut_config.plateau_band_kg_per_week
+    diagnostics = run or run_particle_filter_diagnostics(
+        observations,
+        filter_config,
+        rate_window_days=cut_config.trend_window_days,
+        plateau_band_kg_per_week=cut_config.plateau_band_kg_per_week,
     )
-    final = estimates[-1]
+    final = diagnostics.estimates[-1]
     return SensitivityResult(
         scenario=name,
+        random_seed=filter_config.random_seed,
         final_tdee_kcal=final.tdee_median_kcal,
         tdee_interval_width_kcal=final.tdee_upper_kcal - final.tdee_lower_kcal,
-        trend_kg_per_week=rate,
-        plateau_probability=plateau,
+        trend_kg_per_week=diagnostics.recent_rate.median_kg_per_week,
+        plateau_probability=diagnostics.recent_rate.plateau_probability,
     )
 
 
 def analyze_cut(observations: list[DailyObservation], config: CutAnalysisConfig | None = None) -> CutAnalysisResult:
     cfg = config or CutAnalysisConfig()
     ordered = sorted(observations, key=lambda item: item.date)
-    estimates = run_particle_filter(ordered, cfg.filter)
+    base_run = run_particle_filter_diagnostics(
+        ordered,
+        cfg.filter,
+        rate_window_days=cfg.trend_window_days,
+        plateau_band_kg_per_week=cfg.plateau_band_kg_per_week,
+    )
+    estimates = base_run.estimates
     days = (estimates[-1].date - estimates[0].date).days + 1
     weight_completeness = _completeness(ordered, "weight_kg")
     intake_completeness = _completeness(ordered, "energy_intake_kcal")
-    rate, rate_lower, rate_upper, plateau = _rate_distribution(
-        estimates, cfg.trend_window_days, cfg.plateau_band_kg_per_week
-    )
+    rate_summary = base_run.recent_rate
+    rate = rate_summary.median_kg_per_week
+    rate_lower = rate_summary.lower_kg_per_week
+    rate_upper = rate_summary.upper_kg_per_week
+    plateau = rate_summary.plateau_probability
     final = estimates[-1]
     tdee_width = final.tdee_upper_kcal - final.tdee_lower_kcal
 
@@ -248,29 +245,29 @@ def analyze_cut(observations: list[DailyObservation], config: CutAnalysisConfig 
     ]
 
     scenarios = [
-        _scenario("recorded-intake", ordered, cfg.filter, cfg),
+        _scenario("recorded-intake", ordered, cfg.filter, cfg, run=base_run),
         _scenario(
             "intake-plus-10-percent",
             ordered,
-            cfg.filter.model_copy(update={"intake_multiplier": 1.10, "random_seed": 20260821}),
+            cfg.filter.model_copy(update={"intake_multiplier": 1.10}),
             cfg,
         ),
         _scenario(
             "intake-plus-20-percent",
             ordered,
-            cfg.filter.model_copy(update={"intake_multiplier": 1.20, "random_seed": 20260822}),
+            cfg.filter.model_copy(update={"intake_multiplier": 1.20}),
             cfg,
         ),
         _scenario(
             "higher-fluid-variance",
             ordered,
-            cfg.filter.model_copy(update={"fluid_process_sd_kg": 0.50, "random_seed": 20260823}),
+            cfg.filter.model_copy(update={"fluid_process_sd_kg": 0.50}),
             cfg,
         ),
         _scenario(
             "weight-outliers-excluded",
             _hampel_weights(ordered),
-            cfg.filter.model_copy(update={"random_seed": 20260824}),
+            cfg.filter,
             cfg,
         ),
     ]
@@ -315,6 +312,8 @@ def analyze_cut(observations: list[DailyObservation], config: CutAnalysisConfig 
         latest_trend_kg_per_week=rate,
         trend_interval_kg_per_week=(rate_lower, rate_upper),
         plateau_probability=plateau,
+        rate_posterior_effective_sample_size=rate_summary.effective_sample_size,
+        rate_posterior_method=rate_summary.method,
         latest_tdee_kcal=final.tdee_median_kcal,
         latest_tdee_interval_kcal=(final.tdee_lower_kcal, final.tdee_upper_kcal),
         state_estimates=estimates,
@@ -325,6 +324,7 @@ def analyze_cut(observations: list[DailyObservation], config: CutAnalysisConfig 
         limitations=[
             "Energy-density and fluid-shift assumptions are uncertain and individualized.",
             "Logged intake can be incomplete; sensitivity scenarios do not identify the true bias.",
+            "Recent-rate uncertainty preserves covariance only within the configured particle-history window.",
             "Plateau probability is a model-based summary, not a diagnosis.",
             "Medication, illness, menstrual-cycle effects, sodium, and glycogen may be unobserved.",
         ],

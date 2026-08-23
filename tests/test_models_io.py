@@ -6,6 +6,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
+from cutsignal.exceptions import DataValidationError
 from cutsignal.io import read_daily, read_foods, read_jsonl, write_jsonl
 from cutsignal.models import (
     DailyObservation,
@@ -68,6 +69,20 @@ def test_jsonl_round_trip_and_invalid_line(tmp_path) -> None:
         read_daily(path)
 
 
+def test_jsonl_write_preserves_existing_file_on_generator_failure(tmp_path) -> None:
+    path = tmp_path / "daily.jsonl"
+    path.write_text("existing\n", encoding="utf-8")
+
+    def broken_records():
+        yield DailyObservation(date=date(2026, 1, 1), weight_kg=80)
+        raise RuntimeError("synthetic write failure")
+
+    with pytest.raises(RuntimeError, match="synthetic write failure"):
+        write_jsonl(broken_records(), path)
+    assert path.read_text(encoding="utf-8") == "existing\n"
+    assert not list(tmp_path.glob(".daily.jsonl.*.tmp"))
+
+
 def test_read_food_csv_sets_and_micros(tmp_path, source: SourceRef) -> None:
     source_json = json.dumps(source.model_dump(mode="json"))
     escaped_source = source_json.replace(chr(34), chr(34) * 2)
@@ -77,10 +92,9 @@ def test_read_food_csv_sets_and_micros(tmp_path, source: SourceRef) -> None:
         f'f1,Beans,100,120,8,7,20,1,0.5,vegan|vegetarian,,"{{""iron"":2.1}}","{escaped_source}"\n',
         encoding="utf-8",
     )
-    # CSV cannot directly construct nested Pydantic source objects from JSON text;
-    # normalized JSONL is the lossless interchange format.
-    with pytest.raises(ValidationError):
-        read_foods(path)
+    csv_item = read_foods(path)[0]
+    assert csv_item.source.provider == source.provider
+    assert csv_item.micronutrients["iron"] == pytest.approx(2.1)
 
     jsonl = tmp_path / "foods.jsonl"
     item = FoodItem(
@@ -99,3 +113,13 @@ def test_read_food_csv_sets_and_micros(tmp_path, source: SourceRef) -> None:
     )
     write_jsonl([item], jsonl)
     assert read_foods(jsonl)[0].micronutrients["iron"] == pytest.approx(2.1)
+
+
+def test_jsonl_line_limit_is_enforced(tmp_path, monkeypatch) -> None:
+    import cutsignal.io as io_module
+
+    path = tmp_path / "oversized.jsonl"
+    path.write_text('{"date":"2026-01-01","weight_kg":80}\n', encoding="utf-8")
+    monkeypatch.setattr(io_module, "MAX_JSONL_LINE_BYTES", 8)
+    with pytest.raises(DataValidationError, match="exceeds"):
+        read_daily(path)

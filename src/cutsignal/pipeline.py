@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from cutsignal.analysis.cut import CutAnalysisConfig, CutAnalysisResult, analyze_cut
 from cutsignal.analysis.strength import (
@@ -45,6 +45,27 @@ class IntegratedDecision(BaseModel):
     )
 
 
+class PipelineReceipt(BaseModel):
+    """Configuration and input-count receipt needed to interpret one run."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int = 1
+    input_counts: dict[str, int]
+    cut_config: CutAnalysisConfig
+    strength_config: StrengthAnalysisConfig
+    diet_constraints: DietConstraints
+    diet_objectives: DietObjectiveWeights
+    solver_time_limits_seconds: dict[str, float]
+    diet_tradeoff_method: str = "five_weighted_profiles_then_nondominance_filter"
+    evidence_note: str = Field(
+        default=(
+            "This receipt records configuration and counts, not input records, identities, "
+            "external validation, adoption, or impact."
+        )
+    )
+
+
 class PipelineResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -53,6 +74,7 @@ class PipelineResult(BaseModel):
     diet: DietPlanResult
     diet_pareto: list[PlanPoint]
     integrated_decision: IntegratedDecision
+    receipt: PipelineReceipt
 
 
 def integrate_decisions(
@@ -133,12 +155,15 @@ def run_pipeline(
     diet_time_limit_seconds: float = 10.0,
     pareto_time_limit_seconds: float = 3.0,
 ) -> PipelineResult:
-    cut = analyze_cut(daily, cut_config)
-    strength = analyze_strength(strength_sets, daily, strength_config)
+    resolved_cut_config = cut_config or CutAnalysisConfig()
+    resolved_strength_config = strength_config or StrengthAnalysisConfig()
+    resolved_objectives = diet_objectives or DietObjectiveWeights()
+    cut = analyze_cut(daily, resolved_cut_config)
+    strength = analyze_strength(strength_sets, daily, resolved_strength_config)
     diet = optimize_weekly_plan(
         foods,
         diet_constraints,
-        diet_objectives,
+        resolved_objectives,
         time_limit_seconds=diet_time_limit_seconds,
     )
     pareto = build_pareto_frontier(
@@ -152,4 +177,19 @@ def run_pipeline(
         diet=diet,
         diet_pareto=pareto,
         integrated_decision=integrate_decisions(cut, strength, diet),
+        receipt=PipelineReceipt(
+            input_counts={
+                "daily_records": len(daily),
+                "strength_sets": len(strength_sets),
+                "food_items": len(foods),
+            },
+            cut_config=resolved_cut_config,
+            strength_config=resolved_strength_config,
+            diet_constraints=diet_constraints,
+            diet_objectives=resolved_objectives,
+            solver_time_limits_seconds={
+                "main_plan": diet_time_limit_seconds,
+                "each_tradeoff_profile": pareto_time_limit_seconds,
+            },
+        ),
     )

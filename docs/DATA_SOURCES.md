@@ -29,7 +29,8 @@ is evidence that a local product is available or safe for a particular person.
 
 [OpenPowerlifting bulk CSV](https://openpowerlifting.gitlab.io/opl-csv/) is optional and not bundled.
 The provider dedicates meet data to the public domain. The adapter stores URL, SHA-256, byte count,
-and license note beside a downloaded snapshot.
+and license note beside a downloaded snapshot. Downloads are streamed through a same-directory
+temporary file, capped at 2 GiB, and atomically replace the destination only after completion.
 
 Competition results are a performance benchmark only. Meet weigh-ins can involve acute weight cuts
 and must not be interpreted as longitudinal body-fat outcomes. `Name|Sex` is not a verified unique

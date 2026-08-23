@@ -19,10 +19,12 @@ not hard-coded as an exact conversion between energy and tissue. Missing intake 
 walk rather than imputing a precise meal total. A bootstrap particle filter updates normalized
 weights and uses systematic resampling below the effective-sample-size threshold.
 
-The recent weekly rate is calculated from the beginning and end of a configurable window. Because
-the stored public result contains marginal quantiles rather than full particle paths, the displayed
-rate interval and plateau probability use a documented normal approximation to those marginals.
-This approximation is a limitation, not a posterior identity.
+The recent weekly rate is calculated from linked particle start/end trajectories over a configurable
+window. Particle histories are re-indexed whenever systematic resampling occurs, so the rate
+posterior preserves the temporal covariance represented by those lineages. Its 2.5/50/97.5%
+quantiles and plateau probability are computed directly from weighted rate draws; they are not
+reconstructed from independent daily marginal intervals. This preserves covariance inside the
+stored window, but it does not establish external calibration.
 
 ## 2. Plateau evidence gate
 
@@ -52,10 +54,17 @@ uses their median. When RPE is present, up to four estimated repetitions in rese
 effective repetitions. Formula spread, high repetitions, and absent RPE influence uncertainty or
 quality flags.
 
-Repeated sessions yield an exercise-specific percentage slope. The reported hierarchical slope is
-a reliability-weighted combination of the raw exercise slope and median cross-exercise slope. The
-reliability weight increases with session count and time span. This is empirical shrinkage, not a
-fully generative hierarchical Bayesian model.
+Repeated sessions yield an exercise-specific percentage slope. Regression weights are the inverse
+of the heuristic e1RM-formula variance, with residual overdispersion retained. A normal
+random-effects prior is estimated across eligible exercises using a DerSimonian-Laird between-
+exercise variance, followed by empirical Bayes posterior shrinkage. With only one eligible
+exercise, no cross-exercise shrinkage is claimed. This is empirical Bayes, not a fully generative
+hierarchical Bayesian model, and the formula-derived measurement variance is not externally
+calibrated.
+
+The analysis also reports weekly session frequency, working sets, volume, mean percentage of e1RM,
+RPE, and body weight. Baseline/latest changes use short multi-session windows rather than a single
+session when enough observations exist.
 
 A fatigue flag requires a recent e1RM drop plus either an RPE rise or volume drop. A
 `review_recovery` decision requires both fatigue and high probability that the slope crosses the
@@ -72,14 +81,27 @@ are `nominal × (1 + uncertainty)`. This is a transparent box-uncertainty model,
 guarantee. After solving, the chosen plan is stress-tested under an additional 5/10 percentage
 points of nutrient uncertainty and 10/20% price shocks without re-optimization.
 
+An independent post-solve validator reconstructs all hard constraints from the selected menu and
+the original food records. It checks daily calories, protein, fiber, optional sodium and
+micronutrients, robust price, preparation time, per-day serving limits, weekly repetition, variety,
+allergens, and dietary tags without reading solver variables. A solver incumbent that fails this
+validator is rejected.
+
 The objective is a user-visible weighted sum of robust cost, preparation time, calorie-target
 deviation, preference penalty, and food-count penalty. Separate lowest-cost, fast-prep,
 preference-first, and simple profiles are solved and dominated points removed. HiGHS status and the
 relative MIP gap are retained. A time-limited feasible plan is never labelled globally optimal.
+The retained profiles are a sampled non-dominated trade-off set, not an exhaustive Pareto frontier;
+weighted-sum sampling can miss discrete non-convex trade-offs.
 
 ## 6. Reproducibility
 
 Synthetic generators and particle filters use fixed seeds. HiGHS is run with one worker and a fixed
-random seed. Floating-point and solver versions can still change the exact incumbent, so CI checks
+random seed. Statistical sensitivity scenarios use the same particle-filter seed (common random
+numbers) so intended parameter/data changes are not deliberately confounded with different random
+streams. Floating-point and solver versions can still change the exact incumbent, so CI checks
 feasibility, disclosed status/gap, invariant gates, and artifact hashes rather than requiring one
 specific menu.
+
+Eight executable deterministic synthetic cases test decision and failure modes. They are software
+fixtures with stated expectations, not population samples or external-validation evidence.

@@ -25,6 +25,10 @@ def test_strength_analysis_metrics_and_pareto(repeated_strength, short_daily) ->
     assert exercise.sessions == 8
     assert exercise.relative_strength_change_pct is not None
     assert exercise.slope_interval_pct_per_week[0] <= exercise.hierarchical_slope_pct_per_week
+    assert exercise.mean_intensity_pct_e1rm > 0
+    assert exercise.sessions_per_week > 0
+    assert result.weekly_summaries
+    assert result.shrinkage_method == "uncertainty_weighted_empirical_bayes"
     assert result.pareto_frontier
     assert result.decision.action in {"stable", "monitor"}
 

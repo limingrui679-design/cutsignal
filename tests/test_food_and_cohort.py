@@ -118,3 +118,11 @@ def test_openpowerlifting_cohort_and_snapshot_manifest(tmp_path, monkeypatch) ->
     assert manifest["bytes"] == len(b"public-snapshot")
     saved = json.loads((tmp_path / "snapshot.zip.manifest.json").read_text(encoding="utf-8"))
     assert saved["sha256"] == manifest["sha256"]
+
+    preserved = tmp_path / "preserved.zip"
+    preserved.write_bytes(b"existing")
+    monkeypatch.setattr(opl, "MAX_SNAPSHOT_BYTES", 5)
+    with pytest.raises(DataValidationError, match="download limit"):
+        opl.download_snapshot(preserved, url="https://example.invalid/snapshot.zip")
+    assert preserved.read_bytes() == b"existing"
+    assert not list(tmp_path.glob(".preserved.zip.*.tmp"))

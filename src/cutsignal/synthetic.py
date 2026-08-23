@@ -109,6 +109,14 @@ def generate_strength_demo(daily: list[DailyObservation], seed: int = 20260821) 
 
 def generate_food_demo() -> list[FoodItem]:
     """Return plausible but explicitly synthetic values for software demonstration."""
+    allergen_map = {
+        "tofu": {"soy"},
+        "eggs": {"egg"},
+        "yogurt": {"milk"},
+        "salmon": {"fish"},
+        "tuna": {"fish"},
+        "almonds": {"tree-nut"},
+    }
     rows = [
         (
             "chicken",
@@ -387,6 +395,7 @@ def generate_food_demo() -> list[FoodItem]:
                 price_uncertainty=0.12,
                 data_quality_score=0.55,
                 category=category,
+                allergens=allergen_map.get(food_id, set()),
                 tags=tags,
                 max_servings_per_day=5,
                 source=SourceRef(

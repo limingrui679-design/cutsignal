@@ -1,0 +1,66 @@
+schema_version: 1
+cases:
+  - id: plateau-sensitivity-gate
+    title: Plateau signal under logging and fluid assumptions
+    domain: fat_loss
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Does apparent flattening survive plausible intake-bias and fluid-noise scenarios?
+    capabilities: [particle_filtering, posterior_uncertainty, sensitivity_analysis, abstention]
+    expected_gate: Unstable sensitivity must downgrade a plan-review signal to continued observation.
+    limitations: Synthetic dynamics do not establish calibration or clinical validity.
+  - id: missing-intake-abstain
+    title: Missing intake coverage forces abstention
+    domain: fat_loss
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Will the system refuse to interpret latent TDEE when paired intake coverage is weak?
+    capabilities: [data_quality, missingness, evidence_gates, abstention]
+    expected_gate: The decision is collect_more_data below the configured intake-coverage threshold.
+    limitations: Missingness is imposed mechanically and is not a model of real logging behavior.
+  - id: water-spike-resilience
+    title: Single water-weight spike robustness
+    domain: fat_loss
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Does one large scale excursion reverse the evidence-gated action?
+    capabilities: [robust_likelihood, outlier_sensitivity, decision_stability]
+    expected_gate: A single injected spike does not reverse the baseline action in this fixture.
+    limitations: One known shock cannot represent all fluid, illness, or measurement patterns.
+  - id: strength-fatigue-gate
+    title: Converging decline, volume, and RPE signals
+    domain: strength
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Does recovery review take precedence when strength decline and fatigue indicators agree?
+    capabilities: [weighted_regression, empirical_bayes, multi_signal_decision, recovery_gate]
+    expected_gate: The strength action is review_recovery.
+    limitations: The fixture does not identify why performance declined or diagnose overtraining.
+  - id: stable-strength-cut
+    title: Stable multi-exercise strength during weight loss
+    domain: strength
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Can the system distinguish broadly retained performance from a material decline?
+    capabilities: [e1rm, training_load, intensity, rpe, frequency, relative_strength]
+    expected_gate: No exercise crosses the high-probability decline threshold.
+    limitations: Formula-based e1RM and synthetic sessions are not direct maximal-strength tests.
+  - id: budget-shock
+    title: Robust plan with disclosed price-shock failures
+    domain: food_optimization
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Is the chosen plan feasible at modeled bounds, and where does additional price uncertainty break it?
+    capabilities: [mixed_integer_optimization, robust_constraints, post_solve_validation, stress_testing]
+    expected_gate: Baseline validation passes with a disclosed gap at or below 20%, and at least one stronger stress scenario fails visibly.
+    limitations: Synthetic prices and nutrients do not establish local affordability or availability.
+  - id: vegetarian-allergen-plan
+    title: Vegetarian plan excluding a declared soy allergen
+    domain: food_optimization
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Can dietary tags, allergens, variety, nutrition, budget, and time constraints hold together?
+    capabilities: [constraint_modeling, allergen_filtering, dietary_tags, feasibility_audit]
+    expected_gate: Independent validation passes with a disclosed gap at or below 20%, and no selected item contains soy.
+    limitations: Allergen metadata are fixture fields, not a substitute for label or clinical review.
+  - id: device-overlap-reconciliation
+    title: Overlapping phone and watch step totals
+    domain: data_engineering
+    evidence_type: deterministic_synthetic_fixture
+    decision_question: Are overlapping additive device streams reconciled instead of blindly summed?
+    capabilities: [streaming_xml, device_reconciliation, provenance, quality_flags]
+    expected_gate: The importer keeps the maximum source-day total and emits a reconciliation flag.
+    limitations: Maximum-source reconciliation is transparent and conservative, not universally correct.

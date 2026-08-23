@@ -11,7 +11,7 @@ from cutsignal.models import FoodItem, SourceRef
 
 USDA_API_ROOT = "https://api.nal.usda.gov/fdc/v1"
 OFF_API_ROOT = "https://world.openfoodfacts.org/api/v3.6/product"
-USER_AGENT = "CutSignal/0.1 (open-source fitness analytics; contact via GitHub)"
+USER_AGENT = "CutSignal/0.2 (local fitness analytics client)"
 
 
 def _nutrient_map(food_nutrients: list[dict[str, Any]]) -> dict[str, float]:

@@ -14,7 +14,9 @@ require appropriate professional context rather than an automated plan adjustmen
 - Food logging may be systematically biased; +10/+20% scenarios are examples, not corrections.
 - Fluid, glycogen, sodium, menstrual-cycle, illness, medication, and travel effects are incompletely
   observed.
-- The displayed recent-rate interval uses marginal state intervals and ignores temporal covariance.
+- The recent-rate posterior preserves represented temporal covariance through linked particle
+  histories inside its configured window; it does not preserve an unlimited trajectory history or
+  establish external calibration.
 - The state-space parameters are plausible defaults, not population-calibrated clinical priors.
 - Change points describe a statistical segmentation and may lag the real event.
 
@@ -22,7 +24,8 @@ require appropriate professional context rather than an automated plan adjustmen
 
 - e1RM formulas assume consistent technique, equipment, range of motion, and effort.
 - RPE is subjective; missing RPE widens only a heuristic uncertainty term.
-- Shrinkage is empirical and can pull a real exercise-specific change toward the group median.
+- Formula-derived e1RM variance is heuristic. Empirical-Bayes shrinkage can pull a real
+  exercise-specific change toward the estimated cross-exercise prior.
 - A detected decline cannot distinguish energy deficit, program design, sleep, injury, or motivation.
 - OpenPowerlifting is competition data and does not validate everyday training trends.
 
@@ -32,8 +35,12 @@ require appropriate professional context rather than an automated plan adjustmen
 - Box uncertainty protects against configured coefficient ranges only.
 - The plan has no meal-timing, recipe-combination, inventory, seasonality, or food-safety model.
 - A feasible incumbent may be returned at the time limit. Its MIP gap is displayed.
+- Five weighted objectives sample a non-dominated trade-off set; they do not enumerate the complete
+  Pareto frontier of the discrete feasible region.
 - Allergy tags and dietary labels are data fields, not guarantees against contamination.
 - Prices and availability require local verification.
+- The optimizer accepts at most 500 candidate foods and a one-hour per-solve limit. Larger source
+  catalogs need availability/data-quality filtering first; time-limited search can still be slow.
 
 ## Product non-goals
 
@@ -42,3 +49,5 @@ require appropriate professional context rather than an automated plan adjustmen
 - No generated before/after claims.
 - No automated calorie reduction based on one weigh-in.
 - No native vendor API claim without a tested adapter and documented data contract.
+- No claim of users, clinical validity, external review, adoption, deployment, or impact from
+  synthetic cases or local verification.

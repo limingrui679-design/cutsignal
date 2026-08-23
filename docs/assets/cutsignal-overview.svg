@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">CutSignal evidence-gated analytics overview</title>
+  <desc id="desc">Three analytical engines feed a precedence-based decision and explicit private and share-safe reports.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07101d"/>
+      <stop offset="1" stop-color="#101b2e"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity=".25"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#506783"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="675" rx="28" fill="url(#bg)"/>
+  <text x="64" y="72" fill="#f4f8ff" font-family="Inter,system-ui,sans-serif" font-size="34" font-weight="700">CutSignal</text>
+  <text x="64" y="105" fill="#93a4bb" font-family="Inter,system-ui,sans-serif" font-size="17">Local-first analytics that can say “not enough evidence”</text>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="150" width="300" height="168" rx="18" fill="#101827" stroke="#24415f"/>
+    <rect x="450" y="150" width="300" height="168" rx="18" fill="#101827" stroke="#24415f"/>
+    <rect x="836" y="150" width="300" height="168" rx="18" fill="#101827" stroke="#24415f"/>
+  </g>
+
+  <circle cx="100" cy="190" r="15" fill="#50e3c2"/>
+  <text x="126" y="197" fill="#f4f8ff" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700">Fat-loss signal</text>
+  <text x="92" y="237" fill="#b9c6d8" font-family="Inter,system-ui,sans-serif" font-size="15">Linked particle trajectories</text>
+  <text x="92" y="264" fill="#b9c6d8" font-family="Inter,system-ui,sans-serif" font-size="15">5 sensitivity scenarios</text>
+  <text x="92" y="291" fill="#ffcc66" font-family="Inter,system-ui,sans-serif" font-size="15">Coverage + stability gates</text>
+
+  <circle cx="486" cy="190" r="15" fill="#42a5f5"/>
+  <text x="512" y="197" fill="#f4f8ff" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700">Strength retention</text>
+  <text x="478" y="237" fill="#b9c6d8" font-family="Inter,system-ui,sans-serif" font-size="15">Uncertainty-weighted e1RM</text>
+  <text x="478" y="264" fill="#b9c6d8" font-family="Inter,system-ui,sans-serif" font-size="15">Empirical Bayes trends</text>
+  <text x="478" y="291" fill="#ffcc66" font-family="Inter,system-ui,sans-serif" font-size="15">Volume + intensity + RPE</text>
+
+  <circle cx="872" cy="190" r="15" fill="#b388ff"/>
+  <text x="898" y="197" fill="#f4f8ff" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700">Food planning</text>
+  <text x="864" y="237" fill="#b9c6d8" font-family="Inter,system-ui,sans-serif" font-size="15">Robust multi-day MILP</text>
+  <text x="864" y="264" fill="#b9c6d8" font-family="Inter,system-ui,sans-serif" font-size="15">Independent constraint audit</text>
+  <text x="864" y="291" fill="#ffcc66" font-family="Inter,system-ui,sans-serif" font-size="15">Status + MIP gap + shocks</text>
+
+  <path d="M214 318 C214 370,450 370,505 405" fill="none" stroke="#506783" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M600 318 L600 398" fill="none" stroke="#506783" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M986 318 C986 370,750 370,695 405" fill="none" stroke="#506783" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="390" y="405" width="420" height="112" rx="20" fill="#162238" stroke="#50e3c2" stroke-width="2"/>
+  </g>
+  <text x="600" y="446" text-anchor="middle" fill="#f4f8ff" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700">Evidence precedence</text>
+  <text x="600" y="478" text-anchor="middle" fill="#b9c6d8" font-family="Inter,system-ui,sans-serif" font-size="15">missing data → recovery → food quality → plan review</text>
+  <text x="600" y="502" text-anchor="middle" fill="#ffcc66" font-family="Inter,system-ui,sans-serif" font-size="14">abstention is a valid output</text>
+
+  <path d="M530 517 C500 555,360 560,302 582" fill="none" stroke="#506783" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M670 517 C700 555,840 560,898 582" fill="none" stroke="#506783" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="92" y="570" width="360" height="72" rx="16" fill="#101827" stroke="#ff8a80"/>
+  <text x="272" y="601" text-anchor="middle" fill="#ffb4ad" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="700">Private-detail</text>
+  <text x="272" y="626" text-anchor="middle" fill="#93a4bb" font-family="Inter,system-ui,sans-serif" font-size="13">dates + exact observed/derived series</text>
+  <rect x="748" y="570" width="360" height="72" rx="16" fill="#101827" stroke="#50e3c2"/>
+  <text x="928" y="601" text-anchor="middle" fill="#85f5dd" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="700">Share-safe</text>
+  <text x="928" y="626" text-anchor="middle" fill="#93a4bb" font-family="Inter,system-ui,sans-serif" font-size="13">structurally minimized, not anonymous</text>
+</svg>

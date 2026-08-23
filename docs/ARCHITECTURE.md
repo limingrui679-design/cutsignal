@@ -16,8 +16,9 @@ flowchart LR
   CUT --> P[Evidence policy]
   LEAN --> P
   BUDGET --> P
-  P --> CLI[CLI and offline report]
+  P --> CLI[CLI and explicit report profiles]
   P --> UI[Local Streamlit UI]
+  P --> E[Run receipt and machine evidence]
 ```
 
 ## Module boundaries
@@ -28,13 +29,17 @@ flowchart LR
   unknown fields.
 - `analysis/state_space.py` owns latent weight/TDEE inference. `analysis/cut.py` owns sensitivity
   scenarios and evidence gates.
-- `analysis/strength.py` owns e1RM, exercise-level shrinkage, fatigue, and the body-weight/strength
-  frontier.
+- `analysis/strength.py` owns e1RM, uncertainty-weighted regression, empirical-Bayes shrinkage,
+  fatigue, weekly load summaries, and the body-weight/strength non-dominated set.
 - `optimization/diet.py` owns eligibility filtering, robust constraints, solver status, stress
-  tests, and objective profiles.
+  tests, independent post-solve validation, and sampled objective profiles.
 - `pipeline.py` is the only cross-engine policy layer. The ordering is explicit: insufficient data,
   then recovery risk, then food-data quality, then possible plan review.
-- `reporting/` receives derived models only. It has no access to source export paths or credentials.
+- `reporting/` has no access to source export paths or credentials. The private profile includes
+  observed daily fields carried by state estimates; the share-safe builder structurally removes
+  daily series, dates, exact metrics, exercise/food names, and menus.
+- `cases.py` and the packaged YAML catalog define executable, synthetic decision/failure cases.
+- `pipeline.py` emits a typed run receipt with counts, configurations, constraints, and solver limits.
 
 ## Extension rule
 

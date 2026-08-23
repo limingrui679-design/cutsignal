@@ -1,0 +1,42 @@
+schema_version: 1
+claims:
+  - id: local-decision-analytics
+    statement: CutSignal implements local decision analytics across fat-loss trend, strength retention, and food planning.
+    maturity: implemented_and_locally_tested
+    evidence: [src/cutsignal/pipeline.py, tests/test_pipeline_reporting_privacy.py, scripts/e2e_smoke.py]
+    does_not_establish: [clinical validity, external adoption, real-user impact]
+  - id: linked-particle-rate
+    statement: Recent-rate intervals and plateau probability are computed from linked particle trajectories.
+    maturity: implemented_and_locally_tested
+    evidence: [src/cutsignal/analysis/state_space.py, tests/test_state_and_cut.py]
+    does_not_establish: [calibration on external cohorts, biological causality]
+  - id: empirical-bayes-strength
+    statement: Exercise slopes use formula-uncertainty-weighted regression and empirical-Bayes cross-exercise shrinkage.
+    maturity: implemented_and_locally_tested
+    evidence: [src/cutsignal/analysis/strength.py, tests/test_strength_analysis.py]
+    does_not_establish: [direct maximal-strength validity, causal attribution to energy deficit]
+  - id: robust-diet-milp
+    statement: The food planner solves an integer program and independently rechecks all hard constraints.
+    maturity: implemented_and_locally_tested
+    evidence: [src/cutsignal/optimization/diet.py, tests/test_diet_optimizer.py]
+    does_not_establish: [medical appropriateness of targets, local availability, adherence]
+  - id: explicit-report-profiles
+    statement: Private-detail and data-minimized report profiles have distinct schemas and disclosure warnings.
+    maturity: implemented_and_locally_tested
+    evidence: [src/cutsignal/reporting/profiles.py, tests/test_pipeline_reporting_privacy.py]
+    does_not_establish: [anonymity, protection on a compromised device]
+  - id: executable-casebook
+    statement: Eight deterministic synthetic cases expose their decision question, assertions, observations, and limitations.
+    maturity: implemented_and_locally_tested
+    evidence: [src/cutsignal/resources/cases.yml, src/cutsignal/cases.py, tests/test_cases.py]
+    does_not_establish: [population representativeness, external review]
+  - id: external-validation
+    statement: Clinical, population, and prospective external validation have not been established.
+    maturity: not_established
+    evidence: [docs/VALIDATION.md, docs/LIMITATIONS.md]
+    does_not_establish: [deployment readiness]
+  - id: adoption-impact
+    statement: No users, institutional adoption, external review, or real-world impact are claimed.
+    maturity: not_established
+    evidence: [docs/LIMITATIONS.md, README.md]
+    does_not_establish: [stars, users, adoption, impact]

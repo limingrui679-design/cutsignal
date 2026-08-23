@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from cutsignal.pipeline import PipelineResult
+from cutsignal.reporting.profiles import ReportProfile, build_report_payload
 
 
 def _polyline(values: list[float], *, width: int = 760, height: int = 220) -> str:
@@ -89,8 +90,52 @@ def _pareto_rows(result: PipelineResult) -> str:
     )
 
 
-def render_html_report(result: PipelineResult, destination: Path) -> Path:
-    """Render only derived aggregates; source IDs and raw records are omitted."""
+def _share_safe_document(result: PipelineResult, css: str) -> str:
+    payload = build_report_payload(result, "share-safe")
+    adequacy = payload["data_adequacy"]
+    cut = payload["fat_loss_signal"]
+    strength = payload["strength_signal"]
+    diet = payload["food_plan_signal"]
+    omitted = payload["omitted_fields"]
+    assert isinstance(adequacy, dict)
+    assert isinstance(cut, dict)
+    assert isinstance(strength, dict)
+    assert isinstance(diet, dict)
+    assert isinstance(omitted, list)
+    return f"""<!doctype html>
+<html lang="en" data-report-profile="share-safe"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width"><title>CutSignal minimized report</title>
+<style>{css}</style></head><body><main>
+<h1>CutSignal</h1><p class="muted">Data-minimized decision summary · no calendar dates or exact health series</p>
+<p class="notice"><strong>Privacy boundary:</strong> Derived categories can still be sensitive. This profile
+reduces disclosure but does not guarantee anonymity; review it for the intended audience before sharing.</p>
+<h2>Integrated decision</h2><div class="card"><strong>{html.escape(result.integrated_decision.action)}</strong>
+<p>{html.escape(result.integrated_decision.scope_note)}</p></div>
+<h2>Evidence adequacy</h2><div class="cards">
+<div class="card">Observation window<strong>{html.escape(str(adequacy["observation_window"]))}</strong></div>
+<div class="card">Weight coverage<strong>{html.escape(str(adequacy["weight_coverage"]))}</strong></div>
+<div class="card">Intake coverage<strong>{html.escape(str(adequacy["intake_coverage"]))}</strong></div>
+<div class="card">Food data quality<strong>{html.escape(str(adequacy["food_data_quality"]))}</strong></div></div>
+<h2>Decision signals</h2><table><thead><tr><th>Domain</th><th>Decision/category</th>
+<th>Robustness</th></tr></thead><tbody>
+<tr><td>Fat-loss trend</td><td>{html.escape(str(cut["decision"]))} · {html.escape(str(cut["trend_direction"]))}</td>
+<td>plateau posterior {html.escape(str(cut["plateau_probability"]))};
+sensitivity {html.escape(str(cut["sensitivity_stability"]))}</td></tr>
+<tr><td>Strength retention</td><td>{html.escape(str(strength["decision"]))}</td>
+<td>fatigue signal present: {html.escape(str(strength["fatigue_signals_present"]).lower())}</td></tr>
+<tr><td>Food plan</td><td>{html.escape(str(diet["solver_status"]))}</td>
+<td>MIP gap: {html.escape(str(diet["mip_gap_category"]))}</td></tr></tbody></table>
+<h2>Intentionally omitted</h2>{_list([str(item) for item in omitted])}
+</main></body></html>"""
+
+
+def render_html_report(
+    result: PipelineResult,
+    destination: Path,
+    *,
+    profile: ReportProfile = "private",
+) -> Path:
+    """Render an explicit private-detail or data-minimized report bundle."""
     cut = result.cut
     decision = result.integrated_decision
     weight_chart = _polyline([item.trend_weight_median_kg for item in cut.state_estimates])
@@ -113,10 +158,13 @@ def render_html_report(result: PipelineResult, destination: Path) -> Path:
     code { color:#80bfff; }
     """
     document = f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<html lang="en" data-report-profile="private"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
 <title>CutSignal private report</title><style>{css}</style></head><body><main>
 <h1>CutSignal</h1><p class="muted">Private, offline decision report · {cut.start_date} to {cut.end_date}</p>
-<p class="notice"><strong>Scope:</strong> {html.escape(decision.scope_note)}</p>
+<p class="notice"><strong>Sensitive private report:</strong> This file contains dates, observed weight/intake,
+latent TDEE, exercise-level metrics, and food-plan details. Keep it local unless reviewed field by field.<br>
+<strong>Scope:</strong> {html.escape(decision.scope_note)}</p>
 <h2>Integrated decision</h2><div class="card"><strong>{html.escape(decision.action)}</strong>
 {_list(decision.rationale)}<p class="muted">Evidence order</p>{_list(decision.evidence_order)}</div>
 <h2>Fat-loss signal</h2><div class="cards">
@@ -141,13 +189,16 @@ Solver status: <strong>{html.escape(result.diet.status)}</strong>; MIP gap:
 <h3>Non-dominated objective profiles</h3><table><thead><tr><th>Profile</th><th>Cost</th><th>Prep</th>
 <th>Preference</th></tr></thead><tbody>{_pareto_rows(result)}</tbody></table>
 <h2>Limitations</h2>{_list([*cut.limitations, *result.strength.limitations, *result.diet.assumptions])}
-<p class="muted">No raw record, source identifier, device identifier, or credential is embedded in this report.</p>
+<p class="muted">Source/device identifiers and credentials are omitted, but daily observations and derived health
+metrics remain sensitive. Generate the <code>share-safe</code> profile for a minimized summary.</p>
 </main></body></html>"""
+    if profile == "share-safe":
+        document = _share_safe_document(result, css)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(document, encoding="utf-8")
     json_path = destination.with_suffix(".json")
     json_path.write_text(
-        json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2) + "\n",
+        json.dumps(build_report_payload(result, profile), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     return destination

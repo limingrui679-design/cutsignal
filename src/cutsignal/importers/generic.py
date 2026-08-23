@@ -11,6 +11,7 @@ import pandas as pd
 
 from cutsignal.exceptions import DataValidationError
 from cutsignal.importers.common import optional_float, parse_date, weight_to_kg
+from cutsignal.input_safety import MAX_TABULAR_BYTES, validate_file_size, validate_row_count
 from cutsignal.models import DailyObservation, SourceRef
 
 ALIASES: dict[str, tuple[str, ...]] = {
@@ -50,7 +51,9 @@ def _column_map(columns: list[str]) -> dict[str, str]:
 
 def import_daily_csv(path: Path, provider: str = "generic-csv") -> list[DailyObservation]:
     """Load rows and aggregate repeated dates without silently summing body weight."""
+    validate_file_size(path, MAX_TABULAR_BYTES, "daily CSV")
     frame = pd.read_csv(path)
+    validate_row_count(len(frame), "daily CSV")
     mapping = _column_map([str(column) for column in frame.columns])
     rows: dict[Any, list[dict[str, Any]]] = defaultdict(list)
     for raw in frame.to_dict(orient="records"):

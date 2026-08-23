@@ -12,6 +12,7 @@ ruff check .
 ruff format --check .
 mypy src/cutsignal
 pytest --cov=cutsignal --cov-report=term-missing
+cutsignal cases verify --output artifacts/cases.json
 python scripts/verify_project.py
 python scripts/score_project.py
 ```
@@ -28,5 +29,9 @@ not preserve a real person's exact dates or values.
 - For a new adapter, follow the checklist in `docs/DEVICE_ADAPTERS.md`.
 - For a new public dataset, add a registry record and verify downloadability, license, deduplication,
   identity, target definition, and split leakage separately.
+- For a new public capability statement, update `data/registry/claims.yml` with direct evidence and
+  an explicit list of what the evidence does not establish.
+- Report profiles are security-relevant: add negative tests for every field that must not appear in
+  `share-safe` output.
 
 The code of conduct applies to all project spaces.

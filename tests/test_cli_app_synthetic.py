@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from typer.testing import CliRunner
 
-from cutsignal.app import _read_uploaded_jsonl
+from cutsignal.app import _read_uploaded_constraints, _read_uploaded_jsonl
 from cutsignal.cli import app
+from cutsignal.input_safety import MAX_CONSTRAINT_BYTES
 from cutsignal.models import DailyObservation
 from cutsignal.synthetic import (
     generate_daily_demo,
@@ -19,7 +21,7 @@ runner = CliRunner()
 def test_cli_version_help_and_daily_import(tmp_path) -> None:
     version = runner.invoke(app, ["version"])
     assert version.exit_code == 0
-    assert version.stdout.strip() == "0.1.0"
+    assert version.stdout.strip() == "0.2.0"
     help_result = runner.invoke(app, ["--help"])
     assert help_result.exit_code == 0
     assert "device-independent" in runner.invoke(app, ["import", "--help"]).stdout
@@ -31,6 +33,39 @@ def test_cli_version_help_and_daily_import(tmp_path) -> None:
     assert result.exit_code == 0
     assert destination.exists()
     assert "1" in result.stdout
+
+    invalid = tmp_path / "invalid.csv"
+    invalid.write_text("unknown,value\na,b\n", encoding="utf-8")
+    rejected = runner.invoke(app, ["import", "daily-csv", str(invalid), str(destination)])
+    assert rejected.exit_code == 2
+    assert "Input error:" in rejected.stderr
+    assert "Traceback" not in rejected.stderr
+
+    unknown_case = runner.invoke(app, ["cases", "run", "not-a-case"])
+    assert unknown_case.exit_code == 2
+    assert "unknown case" in unknown_case.stderr
+    assert "Traceback" not in unknown_case.stderr
+
+    empty = tmp_path / "empty.jsonl"
+    empty.write_text("", encoding="utf-8")
+    oversized_constraints = tmp_path / "constraints.json"
+    oversized_constraints.write_bytes(b" " * (MAX_CONSTRAINT_BYTES + 1))
+    oversized = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--daily",
+            str(empty),
+            "--strength",
+            str(empty),
+            "--foods",
+            str(empty),
+            "--constraints",
+            str(oversized_constraints),
+        ],
+    )
+    assert oversized.exit_code == 2
+    assert "constraint JSON" in oversized.stderr
 
 
 def test_cli_privacy_exit_and_app_jsonl_parser(tmp_path) -> None:
@@ -51,6 +86,8 @@ def test_cli_privacy_exit_and_app_jsonl_parser(tmp_path) -> None:
         assert "line 1" in str(exc)
     else:
         raise AssertionError("invalid app JSONL was accepted")
+    with pytest.raises(ValueError, match="constraint JSON exceeds"):
+        _read_uploaded_constraints(b" " * (MAX_CONSTRAINT_BYTES + 1))
 
 
 def test_synthetic_generators_are_deterministic_and_labelled() -> None:

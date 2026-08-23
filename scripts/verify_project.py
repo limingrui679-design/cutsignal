@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -21,11 +22,27 @@ EXCLUDED_PARTS = {".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", "__pyca
 
 def checkout_fingerprint() -> str:
     digest = hashlib.sha256()
-    files = sorted(
-        path
-        for path in ROOT.rglob("*")
-        if path.is_file() and not EXCLUDED_PARTS.intersection(path.relative_to(ROOT).parts)
-    )
+    git_binary = shutil.which("git")
+    if git_binary is not None:
+        listed = subprocess.run(  # noqa: S603
+            [git_binary, "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+            cwd=ROOT,
+            capture_output=True,
+            check=True,
+        ).stdout
+        files = sorted(
+            ROOT / relative.decode("utf-8")
+            for relative in listed.split(b"\0")
+            if relative and (ROOT / relative.decode("utf-8")).is_file()
+        )
+    else:
+        files = sorted(
+            path
+            for path in ROOT.rglob("*")
+            if path.is_file()
+            and ".venv" not in path.relative_to(ROOT).parts
+            and not EXCLUDED_PARTS.intersection(path.relative_to(ROOT).parts)
+        )
     for path in files:
         relative = path.relative_to(ROOT).as_posix()
         digest.update(relative.encode("utf-8"))
@@ -88,8 +105,45 @@ def main() -> int:
             ],
         ),
         "wheel": _run(
-            "wheel",
-            [python, "-m", "build", "--wheel", "--outdir", "artifacts/dist"],
+            "distribution",
+            [python, "-m", "build", "--sdist", "--wheel", "--outdir", "artifacts/dist"],
+        ),
+        "fresh_install": _run(
+            "fresh_install",
+            [python, "scripts/fresh_install_smoke.py"],
+            timeout=420,
+        ),
+        "pip_check": _run("pip_check", [python, "-m", "pip", "check"]),
+        "public_api": _run(
+            "public_api",
+            [
+                python,
+                "-c",
+                (
+                    "import cutsignal; "
+                    "assert callable(cutsignal.analyze_cut); "
+                    "assert callable(cutsignal.analyze_strength); "
+                    "assert callable(cutsignal.optimize_weekly_plan); "
+                    "assert callable(cutsignal.run_pipeline)"
+                ),
+            ],
+        ),
+        "claims": _run("claims", [python, "scripts/verify_claims.py"]),
+        "docs_links": _run("docs_links", [python, "scripts/verify_docs.py"]),
+        "cases": _run(
+            "cases",
+            [
+                python,
+                "-m",
+                "cutsignal",
+                "cases",
+                "verify",
+                "--output",
+                "artifacts/cases.json",
+                "--optimizer-seconds",
+                "2",
+            ],
+            timeout=240,
         ),
         "cli": _run("cli", [python, "-m", "cutsignal", "--help"]),
         "ui": _run("ui", [python, "scripts/ui_smoke.py"]),
@@ -111,6 +165,7 @@ def main() -> int:
         ROOT / "CONTRIBUTING.md",
         ROOT / "SECURITY.md",
         ROOT / "CITATION.cff",
+        ROOT / "data/registry/claims.yml",
     ]
     privacy = audit_paths(public_candidates)
     required_docs = [
@@ -125,7 +180,10 @@ def main() -> int:
         "docs/PRIVACY.md",
         "docs/LIMITATIONS.md",
         "docs/VALIDATION.md",
+        "docs/CASEBOOK.md",
+        "docs/PROJECT_AUDIT.md",
         "data/registry/sources.yml",
+        "data/registry/claims.yml",
     ]
     docs = {
         "passed": all(
@@ -134,6 +192,26 @@ def main() -> int:
         "required": required_docs,
         "missing": [relative for relative in required_docs if not (ROOT / relative).is_file()],
     }
+    semantic_requirements = {
+        "README.md": ["share-safe", "cases verify", "not an exhaustive Pareto frontier"],
+        "docs/METHODS.md": ["linked particle", "empirical Bayes", "independent post-solve"],
+        "docs/PRIVACY.md": ["private", "share-safe", "does not guarantee anonymity"],
+        "docs/CASEBOOK.md": ["deterministic synthetic", "device-overlap-reconciliation"],
+        "docs/PROJECT_AUDIT.md": ["P0", "P1", "External conditions"],
+    }
+    semantic_missing: list[str] = []
+    for relative, phrases in semantic_requirements.items():
+        path = ROOT / relative
+        content = path.read_text(encoding="utf-8") if path.is_file() else ""
+        normalized_content = " ".join(content.casefold().split())
+        semantic_missing.extend(
+            f"{relative}: {phrase}"
+            for phrase in phrases
+            if " ".join(phrase.casefold().split()) not in normalized_content
+        )
+    docs["semantic_requirements"] = semantic_requirements
+    docs["semantic_missing"] = semantic_missing
+    docs["passed"] = bool(docs["passed"]) and not semantic_missing
     coverage: dict[str, Any] = {}
     coverage_path = ARTIFACTS / "coverage.json"
     if coverage_path.exists():
@@ -143,11 +221,24 @@ def main() -> int:
     if e2e_path.exists():
         e2e = json.loads(e2e_path.read_text(encoding="utf-8"))
 
+    git_binary = shutil.which("git")
+    git_status = (
+        subprocess.run(  # noqa: S603
+            [git_binary, "status", "--porcelain"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        ).stdout.splitlines()
+        if git_binary is not None
+        else ["git executable unavailable"]
+    )
     evidence = {
         "schema_version": 1,
         "checkout_fingerprint": checkout_fingerprint(),
         "python": sys.version,
         "platform": sys.platform,
+        "git_status_porcelain": git_status,
         "checks": checks,
         "coverage": coverage,
         "privacy": privacy.model_dump(mode="json"),

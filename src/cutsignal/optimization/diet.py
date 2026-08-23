@@ -15,8 +15,11 @@ import pulp
 from pydantic import BaseModel, ConfigDict, Field
 from scipy.optimize import Bounds, LinearConstraint
 
-from cutsignal.exceptions import OptimizationInfeasibleError
+from cutsignal.exceptions import DataValidationError, OptimizationInfeasibleError
 from cutsignal.models import DietConstraints, DietObjectiveWeights, FoodItem
+
+MAX_OPTIMIZER_FOODS = 500
+MAX_SOLVER_SECONDS = 3_600.0
 
 
 class MealPlanEntry(BaseModel):
@@ -64,6 +67,14 @@ class PlanSensitivityResult(BaseModel):
     violations: list[str]
 
 
+class PlanValidationResult(BaseModel):
+    """Independent post-solve checks against the original user constraints."""
+
+    feasible: bool
+    slack_by_constraint: dict[str, float]
+    violations: list[str]
+
+
 class DietPlanResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -78,6 +89,7 @@ class DietPlanResult(BaseModel):
     unique_foods: int
     weighted_data_quality: Annotated[float, Field(ge=0, le=1)]
     constraint_slack: dict[str, float]
+    independent_validation: PlanValidationResult
     sensitivity: list[PlanSensitivityResult]
     warnings: list[str]
     assumptions: list[str]
@@ -129,6 +141,10 @@ class _Layout:
 
 
 def _eligible(foods: list[FoodItem], constraints: DietConstraints) -> list[FoodItem]:
+    if len(foods) > MAX_OPTIMIZER_FOODS:
+        raise DataValidationError(f"food catalog has {len(foods)} items; optimizer maximum is {MAX_OPTIMIZER_FOODS}")
+    if len({food.food_id for food in foods}) != len(foods):
+        raise OptimizationInfeasibleError("food_id values must be unique")
     selected: list[FoodItem] = []
     for food in foods:
         if constraints.excluded_allergens & {item.casefold() for item in food.allergens}:
@@ -146,6 +162,104 @@ def _eligible(foods: list[FoodItem], constraints: DietConstraints) -> list[FoodI
             f"only {len(selected)} eligible foods remain, below min_unique_foods={constraints.min_unique_foods}"
         )
     return selected
+
+
+def validate_weekly_plan(
+    entries: list[MealPlanEntry],
+    foods: list[FoodItem],
+    constraints: DietConstraints,
+) -> PlanValidationResult:
+    """Recompute every hard constraint without reading solver variables."""
+    lookup = {food.food_id: food for food in foods}
+    slacks: dict[str, float] = {}
+    violations: list[str] = []
+    if len(lookup) != len(foods):
+        violations.append("duplicate_food_ids")
+    unknown = sorted({entry.food_id for entry in entries} - lookup.keys())
+    if unknown:
+        violations.extend(f"unknown_food:{food_id}" for food_id in unknown)
+    invalid_days = sorted({entry.day for entry in entries if not 1 <= entry.day <= constraints.days})
+    violations.extend(f"invalid_day:{day}" for day in invalid_days)
+    if any(entry.servings <= 0 for entry in entries):
+        violations.append("nonpositive_servings")
+
+    by_day: dict[int, list[MealPlanEntry]] = {
+        day: [entry for entry in entries if entry.day == day] for day in range(1, constraints.days + 1)
+    }
+    for day, day_entries in by_day.items():
+        if not day_entries:
+            violations.append(f"day_{day}.empty")
+            continue
+        selected = [(lookup[entry.food_id], entry.servings) for entry in day_entries if entry.food_id in lookup]
+
+        def robust_total(
+            field: str,
+            mode: str,
+            selected_items: list[tuple[FoodItem, int]] = selected,
+        ) -> float:
+            return float(
+                sum(
+                    _coefficient(food, field, mode, constraints.robust_nutrition) * servings
+                    for food, servings in selected_items
+                )
+            )
+
+        day_slacks = {
+            f"day_{day}.calories_min": robust_total("calories_kcal", "lower") - constraints.calories_min,
+            f"day_{day}.calories_max": constraints.calories_max - robust_total("calories_kcal", "upper"),
+            f"day_{day}.protein_min": robust_total("protein_g", "lower") - constraints.protein_min_g,
+            f"day_{day}.fiber_min": robust_total("fiber_g", "lower") - constraints.fiber_min_g,
+            f"day_{day}.cost_max": constraints.budget_max_per_day
+            - sum(
+                food.price * (1 + food.price_uncertainty if constraints.robust_price else 1) * servings
+                for food, servings in selected
+            ),
+            f"day_{day}.prep_max": constraints.prep_minutes_max_per_day
+            - sum(food.prep_minutes * servings for food, servings in selected),
+        }
+        if constraints.sodium_max_mg is not None:
+            day_slacks[f"day_{day}.sodium_max"] = constraints.sodium_max_mg - robust_total("sodium_mg", "upper")
+        for nutrient, required in constraints.micronutrient_min.items():
+            amount = sum(
+                float(food.micronutrients.get(nutrient, 0.0))
+                * (1 - food.nutrient_uncertainty if constraints.robust_nutrition else 1)
+                * servings
+                for food, servings in selected
+            )
+            day_slacks[f"day_{day}.micronutrient_{nutrient}_min"] = amount - required
+        slacks.update(day_slacks)
+
+        servings_by_food: dict[str, int] = {}
+        for entry in day_entries:
+            servings_by_food[entry.food_id] = servings_by_food.get(entry.food_id, 0) + entry.servings
+        for food_id, servings in servings_by_food.items():
+            if food_id in lookup:
+                slacks[f"day_{day}.{food_id}.servings_max"] = lookup[food_id].max_servings_per_day - servings
+
+    used_foods = {entry.food_id for entry in entries if entry.food_id in lookup}
+    slacks["weekly.unique_foods_min"] = len(used_foods) - constraints.min_unique_foods
+    for food_id in used_foods:
+        if food_id not in lookup:
+            continue
+        days_used = len({entry.day for entry in entries if entry.food_id == food_id})
+        slacks[f"weekly.{food_id}.days_max"] = constraints.max_days_per_food - days_used
+        food = lookup[food_id]
+        allergens = {item.casefold() for item in food.allergens}
+        tags = {item.casefold() for item in food.tags}
+        if constraints.excluded_allergens & allergens:
+            violations.append(f"excluded_allergen:{food_id}")
+        if constraints.required_tags and not {item.casefold() for item in constraints.required_tags} <= tags:
+            violations.append(f"required_tag_missing:{food_id}")
+        if {item.casefold() for item in constraints.forbidden_tags} & tags:
+            violations.append(f"forbidden_tag:{food_id}")
+
+    violations.extend(sorted(name for name, value in slacks.items() if value < -1e-6))
+    unique_violations = sorted(set(violations))
+    return PlanValidationResult(
+        feasible=not unique_violations,
+        slack_by_constraint=slacks,
+        violations=unique_violations,
+    )
 
 
 def _coefficient(food: FoodItem, field: str, mode: str, robust: bool) -> float:
@@ -289,16 +403,6 @@ def _build_problem(
             z_used[layout.y(day, food_index)] = -1
         add(z_used, upper=0)
 
-    # Canonicalize otherwise equivalent weekday permutations. The signature has
-    # no semantic meaning; it only orders solutions that contain the same seven day plans.
-    for day in range(layout.days - 1):
-        ordered_signature = np.zeros(layout.size)
-        for food_index in range(layout.foods):
-            coefficient = food_index + 1
-            ordered_signature[layout.y(day, food_index)] = coefficient
-            ordered_signature[layout.y(day + 1, food_index)] = -coefficient
-        add(ordered_signature, upper=0)
-
     unique = np.zeros(layout.size)
     for food_index in range(layout.foods):
         unique[layout.z(food_index)] = 1
@@ -422,6 +526,11 @@ def _summarize(
     if min(slack.values()) < 1e-5:
         warnings.append("at least one constraint is binding; small input changes may alter feasibility")
     sensitivity = _stress_test(entries, foods, constraints)
+    independent_validation = validate_weekly_plan(entries, foods, constraints)
+    if not independent_validation.feasible:
+        raise OptimizationInfeasibleError(
+            "solver returned a plan that failed independent validation: " + ", ".join(independent_validation.violations)
+        )
     return DietPlanResult(
         status=status,
         solver_message=solver_message,
@@ -434,6 +543,7 @@ def _summarize(
         unique_foods=len(used_foods),
         weighted_data_quality=quality,
         constraint_slack=slack,
+        independent_validation=independent_validation,
         sensitivity=sensitivity,
         warnings=warnings,
         assumptions=[
@@ -640,11 +750,6 @@ def _solve_pulp(
         problem += z[food_index] <= pulp.lpSum(y[day, food_index] for day in range(layout.days))
     problem += pulp.lpSum(z.values()) >= constraints.min_unique_foods
 
-    for day in range(layout.days - 1):
-        problem += pulp.lpSum((1 << index) * y[day, index] for index in range(layout.foods)) <= pulp.lpSum(
-            (1 << index) * y[day + 1, index] for index in range(layout.foods)
-        )
-
     objective_terms: list[pulp.LpAffineExpression] = []
     for day in range(layout.days):
         for food_index, food in enumerate(foods):
@@ -697,7 +802,9 @@ def optimize_weekly_plan(
     *,
     time_limit_seconds: float = 30.0,
 ) -> DietPlanResult:
-    """Solve the robust weekly mixed-integer plan to global MIP tolerance."""
+    """Solve the robust weekly MILP and disclose incumbent status and MIP gap."""
+    if not np.isfinite(time_limit_seconds) or not 0 < time_limit_seconds <= MAX_SOLVER_SECONDS:
+        raise ValueError(f"time_limit_seconds must be greater than 0 and at most {MAX_SOLVER_SECONDS:g}")
     selected = _eligible(foods, constraints)
     _preflight(selected, constraints)
     weights = objectives or DietObjectiveWeights()
@@ -721,7 +828,11 @@ def build_pareto_frontier(
     *,
     time_limit_seconds: float = 5.0,
 ) -> list[PlanPoint]:
-    """Solve multiple explicit trade-offs and retain non-dominated plan summaries."""
+    """Return a sampled non-dominated set from five explicit weighted objectives.
+
+    This is not an exhaustive Pareto frontier. Weighted-sum sampling can miss
+    non-convex or unsampled trade-offs in a discrete feasible region.
+    """
     profiles = {
         "balanced": DietObjectiveWeights(),
         "lowest-cost": DietObjectiveWeights(

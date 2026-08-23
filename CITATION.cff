@@ -5,10 +5,8 @@ type: software
 authors:
   - family-names: Li
     given-names: Mingrui
-version: 0.1.0
-date-released: 2026-08-20
+version: 0.2.0
 license: MIT
-repository-code: "https://github.com/limingrui679-design/cutsignal"
 keywords:
   - fitness analytics
   - state-space model

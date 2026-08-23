@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +16,7 @@ import pandas as pd
 from cutsignal.exceptions import DataValidationError, InsufficientDataError
 
 DEFAULT_DATA_URL = "https://openpowerlifting.gitlab.io/opl-csv/files/openpowerlifting-latest.zip"
+MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024 * 1024
 
 
 def download_snapshot(
@@ -26,14 +29,35 @@ def download_snapshot(
     destination.parent.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256()
     byte_count = 0
-    headers = {"User-Agent": "CutSignal/0.1 public-data importer"}
-    with httpx.stream("GET", url, timeout=timeout_seconds, headers=headers, follow_redirects=True) as r:
-        r.raise_for_status()
-        with destination.open("wb") as handle:
-            for chunk in r.iter_bytes():
-                handle.write(chunk)
-                digest.update(chunk)
-                byte_count += len(chunk)
+    headers = {"User-Agent": "CutSignal/0.2 public-data importer"}
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            dir=destination.parent,
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            with httpx.stream("GET", url, timeout=timeout_seconds, headers=headers, follow_redirects=True) as r:
+                r.raise_for_status()
+                content_length = getattr(r, "headers", {}).get("content-length")
+                if content_length is not None and int(content_length) > MAX_SNAPSHOT_BYTES:
+                    raise DataValidationError("OpenPowerlifting snapshot exceeds the configured download limit")
+                for chunk in r.iter_bytes():
+                    if byte_count + len(chunk) > MAX_SNAPSHOT_BYTES:
+                        raise DataValidationError("OpenPowerlifting snapshot exceeds the configured download limit")
+                    handle.write(chunk)
+                    digest.update(chunk)
+                    byte_count += len(chunk)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(destination)
+    except BaseException:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+        raise
     manifest = {
         "source": "OpenPowerlifting",
         "url": url,

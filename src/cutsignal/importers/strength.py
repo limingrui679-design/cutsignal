@@ -9,6 +9,7 @@ import pandas as pd
 
 from cutsignal.exceptions import DataValidationError
 from cutsignal.importers.common import optional_float, parse_date, weight_to_kg
+from cutsignal.input_safety import MAX_TABULAR_BYTES, validate_file_size, validate_row_count
 from cutsignal.models import SourceRef, StrengthSet
 
 FIELD_ALIASES: dict[str, tuple[str, ...]] = {
@@ -60,7 +61,9 @@ def _mapping(columns: list[str]) -> dict[str, str]:
 
 
 def import_strength_csv(path: Path, provider: str | None = None) -> list[StrengthSet]:
+    validate_file_size(path, MAX_TABULAR_BYTES, "strength CSV")
     frame = pd.read_csv(path)
+    validate_row_count(len(frame), "strength CSV")
     columns = [str(column) for column in frame.columns]
     mapping = _mapping(columns)
     selected_provider = provider or _detect_provider({column.strip().casefold() for column in columns})

@@ -27,6 +27,7 @@ SENSITIVE_CONTENT_PATTERNS = {
     "date_of_birth": re.compile("date" + "OfBirth=", re.IGNORECASE),
     "medical_record": re.compile("clinical" + "record|HKClinical" + "TypeIdentifier", re.IGNORECASE),
 }
+SKIPPED_DIRECTORY_NAMES = {".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".venv", "__pycache__"}
 
 
 class PrivacyFinding(BaseModel):
@@ -50,7 +51,15 @@ def audit_paths(paths: list[Path], *, max_text_bytes: int = 2_000_000) -> Privac
     findings: list[PrivacyFinding] = []
     scanned = 0
     for root in paths:
-        candidates = [root] if root.is_file() else [path for path in root.rglob("*") if path.is_file()]
+        candidates = (
+            [root]
+            if root.is_file()
+            else [
+                path
+                for path in root.rglob("*")
+                if path.is_file() and not SKIPPED_DIRECTORY_NAMES.intersection(path.parts)
+            ]
+        )
         for path in candidates:
             scanned += 1
             relative = str(path)
@@ -63,18 +72,30 @@ def audit_paths(paths: list[Path], *, max_text_bytes: int = 2_000_000) -> Privac
                         remediation="move it under an ignored local data directory and remove it from Git history",
                     )
                 )
-            if path.stat().st_size > max_text_bytes or path.suffix.casefold() in {
+            if path.suffix.casefold() in {
                 ".zip",
                 ".png",
                 ".jpg",
                 ".pdf",
                 ".parquet",
+                ".pyc",
             }:
                 continue
             try:
-                text = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
+                with path.open("rb") as handle:
+                    payload = handle.read(max_text_bytes + 1)
+                text = payload[:max_text_bytes].decode("utf-8", errors="replace")
+            except OSError:
                 continue
+            if len(payload) > max_text_bytes:
+                findings.append(
+                    PrivacyFinding(
+                        path=relative,
+                        severity="medium",
+                        finding=f"text file exceeds the {max_text_bytes}-byte complete-scan limit",
+                        remediation="review the full file manually or split/remove it before publication",
+                    )
+                )
             for name, pattern in SENSITIVE_CONTENT_PATTERNS.items():
                 if pattern.search(text):
                     findings.append(

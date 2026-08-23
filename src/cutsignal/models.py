@@ -108,6 +108,16 @@ class FoodItem(BaseModel):
     max_servings_per_day: Annotated[int, Field(ge=1, le=20)] = 4
     source: SourceRef
 
+    @field_validator("allergens", "tags")
+    @classmethod
+    def normalize_labels(cls, value: set[str]) -> set[str]:
+        return {item.strip().casefold() for item in value if item.strip()}
+
+    @field_validator("micronutrients")
+    @classmethod
+    def normalize_micronutrients(cls, value: dict[str, float]) -> dict[str, float]:
+        return {key.strip().casefold(): amount for key, amount in value.items()}
+
     @model_validator(mode="after")
     def validate_macro_energy(self) -> FoodItem:
         macro_kcal = self.protein_g * 4 + self.carbs_g * 4 + self.fat_g * 9
@@ -137,6 +147,16 @@ class DietConstraints(BaseModel):
     forbidden_tags: set[str] = Field(default_factory=set)
     robust_nutrition: bool = True
     robust_price: bool = True
+
+    @field_validator("excluded_allergens", "required_tags", "forbidden_tags")
+    @classmethod
+    def normalize_constraint_labels(cls, value: set[str]) -> set[str]:
+        return {item.strip().casefold() for item in value if item.strip()}
+
+    @field_validator("micronutrient_min")
+    @classmethod
+    def normalize_micronutrient_targets(cls, value: dict[str, float]) -> dict[str, float]:
+        return {key.strip().casefold(): amount for key, amount in value.items()}
 
     @model_validator(mode="after")
     def validate_bounds(self) -> DietConstraints:

@@ -7,8 +7,12 @@ import pytest
 
 from cutsignal.analysis.changepoints import detect_change_points
 from cutsignal.analysis.cut import CutAnalysisConfig, _decision, _hampel_weights, analyze_cut
-from cutsignal.analysis.state_space import ParticleFilterConfig, run_particle_filter
-from cutsignal.exceptions import InsufficientDataError
+from cutsignal.analysis.state_space import (
+    ParticleFilterConfig,
+    run_particle_filter,
+    run_particle_filter_diagnostics,
+)
+from cutsignal.exceptions import DataValidationError, InsufficientDataError
 from cutsignal.models import DailyObservation
 
 
@@ -38,15 +42,43 @@ def test_particle_filter_is_reproducible_and_fills_calendar(short_daily) -> None
     assert "missing_day" in first[10].quality_flags
     assert [item.tdee_median_kcal for item in first] == [item.tdee_median_kcal for item in second]
     assert all(item.tdee_lower_kcal <= item.tdee_median_kcal <= item.tdee_upper_kcal for item in first)
+    diagnostic = run_particle_filter_diagnostics(
+        observations,
+        config,
+        rate_window_days=14,
+        plateau_band_kg_per_week=0.1,
+    )
+    assert diagnostic.recent_rate.method == "linked_particle_trajectories"
+    assert diagnostic.recent_rate.elapsed_days == 14
+    assert diagnostic.recent_rate.lower_kg_per_week <= diagnostic.recent_rate.median_kg_per_week
+    assert 0 <= diagnostic.recent_rate.plateau_probability <= 1
 
 
 def test_particle_filter_rejects_insufficient_data() -> None:
+    valid = [
+        DailyObservation(date=date(2026, 1, 1), weight_kg=80),
+        DailyObservation(date=date(2026, 1, 2), weight_kg=79.9),
+    ]
+    with pytest.raises(ValueError, match="rate_window_days"):
+        run_particle_filter_diagnostics(valid, rate_window_days=0)
+    with pytest.raises(ValueError, match="rate_window_days"):
+        run_particle_filter_diagnostics(valid, rate_window_days=366)
+    with pytest.raises(ValueError, match="plateau_band"):
+        run_particle_filter_diagnostics(valid, plateau_band_kg_per_week=0)
+    with pytest.raises(ValueError, match="plateau_band"):
+        run_particle_filter_diagnostics(valid, plateau_band_kg_per_week=5.1)
     with pytest.raises(InsufficientDataError, match="no daily"):
         run_particle_filter([])
     with pytest.raises(InsufficientDataError, match="two"):
         run_particle_filter([DailyObservation(date=date(2026, 1, 1), weight_kg=80)])
     with pytest.raises(ValueError, match="floor"):
         ParticleFilterConfig(tdee_floor_kcal=3_000, tdee_ceiling_kcal=2_000)
+    duplicated = [
+        DailyObservation(date=date(2026, 1, 1), weight_kg=80),
+        DailyObservation(date=date(2026, 1, 1), weight_kg=79),
+    ]
+    with pytest.raises(DataValidationError, match="unique dates"):
+        run_particle_filter(duplicated)
 
 
 def test_cut_analysis_runs_all_sensitivity_scenarios(short_daily) -> None:
@@ -63,7 +95,10 @@ def test_cut_analysis_runs_all_sensitivity_scenarios(short_daily) -> None:
         "higher-fluid-variance",
         "weight-outliers-excluded",
     }
+    assert {item.random_seed for item in result.sensitivity} == {config.filter.random_seed}
     assert 0 <= result.plateau_probability <= 1
+    assert result.rate_posterior_method == "linked_particle_trajectories"
+    assert result.rate_posterior_effective_sample_size > 0
     assert result.decision.scope_note.startswith("Decision support")
 
 

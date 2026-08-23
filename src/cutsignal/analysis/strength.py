@@ -20,6 +20,8 @@ class StrengthAnalysisConfig(BaseModel):
     max_reps_for_e1rm: Annotated[int, Field(ge=3, le=30)] = 15
     min_sessions_per_exercise: Annotated[int, Field(ge=2, le=20)] = 4
     hierarchy_prior_sessions: Annotated[float, Field(gt=0, le=50)] = 6.0
+    minimum_between_exercise_sd_pct_per_week: Annotated[float, Field(gt=0, le=5)] = 0.20
+    comparison_sessions: Annotated[int, Field(ge=1, le=5)] = 3
     material_decline_pct_per_week: Annotated[float, Field(ge=-5, le=0)] = -0.5
     fatigue_recent_sessions: Annotated[int, Field(ge=2, le=10)] = 3
     allometric_exponent: Annotated[float, Field(gt=0, le=1.5)] = 0.67
@@ -32,6 +34,7 @@ class SessionMetric(BaseModel):
     e1rm_uncertainty_pct: float
     volume_kg: float
     working_sets: int
+    mean_intensity_pct_e1rm: float
     mean_rpe: float | None
     bodyweight_kg: float | None
 
@@ -48,6 +51,14 @@ class ExerciseStrengthResult(BaseModel):
     slope_interval_pct_per_week: tuple[float, float]
     decline_probability: Annotated[float, Field(ge=0, le=1)]
     relative_strength_change_pct: float | None
+    sessions_per_week: float
+    baseline_volume_kg: float
+    latest_volume_kg: float
+    volume_change_pct: float
+    baseline_mean_rpe: float | None
+    latest_mean_rpe: float | None
+    rpe_change: float | None
+    mean_intensity_pct_e1rm: float
     retention_score: float
     fatigue_signal: bool
     change_point_dates: list[date]
@@ -58,6 +69,17 @@ class ParetoPoint(BaseModel):
     week: date
     bodyweight_kg: float
     strength_index: float
+
+
+class WeeklyTrainingSummary(BaseModel):
+    week: date
+    sessions: int
+    exercise_sessions: int
+    working_sets: int
+    volume_kg: float
+    mean_intensity_pct_e1rm: float
+    mean_rpe: float | None
+    median_bodyweight_kg: float | None
 
 
 class StrengthDecision(BaseModel):
@@ -77,7 +99,9 @@ class StrengthAnalysisResult(BaseModel):
     excluded_sets: int
     exercises: list[ExerciseStrengthResult]
     session_metrics: list[SessionMetric]
+    weekly_summaries: list[WeeklyTrainingSummary]
     pareto_frontier: list[ParetoPoint]
+    shrinkage_method: str = "uncertainty_weighted_empirical_bayes"
     overall_retention_score: float
     decision: StrengthDecision
     limitations: list[str]
@@ -140,6 +164,14 @@ def _session_metrics(
                 e1rm_uncertainty_pct=estimates[best_index][1],
                 volume_kg=sum(item.weight_kg * item.reps for item in session_sets),
                 working_sets=len(session_sets),
+                mean_intensity_pct_e1rm=float(
+                    np.mean(
+                        [
+                            item.weight_kg / max(estimate[0], 1e-9) * 100
+                            for item, estimate in zip(session_sets, estimates, strict=True)
+                        ]
+                    )
+                ),
                 mean_rpe=float(np.mean(rpes)) if rpes else None,
                 bodyweight_kg=bodyweight,
             )
@@ -148,17 +180,46 @@ def _session_metrics(
 
 
 def _regression_slope(values: list[SessionMetric]) -> tuple[float, float]:
+    """Estimate an uncertainty-weighted linear slope and standard error."""
     x = np.asarray([(item.date - values[0].date).days for item in values], dtype=float)
     y = np.asarray([item.e1rm_kg for item in values], dtype=float)
     if len(values) < 3 or np.allclose(x, x[0]):
         return 0.0, np.inf
     design = np.column_stack([np.ones_like(x), x])
-    coefficients, *_ = np.linalg.lstsq(design, y, rcond=None)
+    measurement_sd = np.asarray(
+        [max(item.e1rm_kg * item.e1rm_uncertainty_pct / 100, 0.25) for item in values],
+        dtype=float,
+    )
+    weights = 1 / measurement_sd**2
+    information = design.T @ (weights[:, None] * design)
+    coefficients = np.linalg.pinv(information) @ (design.T @ (weights * y))
     residual = y - design @ coefficients
     dof = max(len(y) - 2, 1)
-    variance = float(np.sum(residual**2) / dof)
-    covariance = variance * np.linalg.pinv(design.T @ design)
+    overdispersion = max(float(np.sum(weights * residual**2) / dof), 1.0)
+    covariance = overdispersion * np.linalg.pinv(information)
     return float(coefficients[1]), float(np.sqrt(max(covariance[1, 1], 0.0)))
+
+
+def _empirical_bayes_prior(
+    slopes: list[tuple[float, float]],
+    minimum_sd: float,
+) -> tuple[float, float]:
+    """Estimate a normal random-effects prior with a DerSimonian-Laird variance."""
+    if not slopes:
+        return 0.0, minimum_sd**2
+    values = np.asarray([item[0] for item in slopes], dtype=float)
+    variances = np.asarray([max(item[1] ** 2, 1e-6) for item in slopes], dtype=float)
+    if len(values) == 1:
+        return float(values[0]), max(float(variances[0]), minimum_sd**2)
+    fixed_weights = 1 / variances
+    fixed_mean = float(np.sum(fixed_weights * values) / np.sum(fixed_weights))
+    q = float(np.sum(fixed_weights * (values - fixed_mean) ** 2))
+    c = float(np.sum(fixed_weights) - np.sum(fixed_weights**2) / np.sum(fixed_weights))
+    tau_squared = max(0.0, (q - (len(values) - 1)) / max(c, 1e-9))
+    tau_squared = max(tau_squared, minimum_sd**2)
+    random_weights = 1 / (variances + tau_squared)
+    mean = float(np.sum(random_weights * values) / np.sum(random_weights))
+    return mean, tau_squared
 
 
 def _fatigue_signal(values: list[SessionMetric], recent_count: int) -> bool:
@@ -180,7 +241,6 @@ def _exercise_results(metrics: list[SessionMetric], config: StrengthAnalysisConf
     for item in metrics:
         grouped[item.exercise].append(item)
     preliminary: dict[str, tuple[float, float, float]] = {}
-    raw_slopes: list[float] = []
     for exercise, values in grouped.items():
         if len(values) < config.min_sessions_per_exercise:
             continue
@@ -189,8 +249,10 @@ def _exercise_results(metrics: list[SessionMetric], config: StrengthAnalysisConf
         slope_pct_week = slope_kg_day / max(baseline, 1e-9) * 700
         slope_se_pct_week = slope_se / max(baseline, 1e-9) * 700
         preliminary[exercise] = (slope_pct_week, slope_se_pct_week, baseline)
-        raw_slopes.append(slope_pct_week)
-    global_slope = float(np.median(raw_slopes)) if raw_slopes else 0.0
+    prior_mean, prior_variance = _empirical_bayes_prior(
+        [(item[0], item[1]) for item in preliminary.values()],
+        config.minimum_between_exercise_sd_pct_per_week,
+    )
 
     output: list[ExerciseStrengthResult] = []
     for exercise, values in sorted(grouped.items()):
@@ -203,15 +265,24 @@ def _exercise_results(metrics: list[SessionMetric], config: StrengthAnalysisConf
         else:
             raw_slope, raw_se, baseline = preliminary[exercise]
         span = (values[-1].date - values[0].date).days
-        session_reliability = len(values) / (len(values) + config.hierarchy_prior_sessions)
-        span_reliability = span / (span + 28) if span > 0 else 0.0
-        reliability = session_reliability * span_reliability
-        hierarchical = reliability * raw_slope + (1 - reliability) * global_slope
-        hierarchical_se = max(raw_se * reliability, 0.15 + (1 - reliability) * 0.75)
+        if len(preliminary) <= 1 or exercise not in preliminary:
+            hierarchical = raw_slope
+            hierarchical_se = raw_se
+        else:
+            observation_variance = max(raw_se**2, 1e-6)
+            prior_precision = (config.hierarchy_prior_sessions / 6.0) / prior_variance
+            posterior_variance = 1 / (1 / observation_variance + prior_precision)
+            hierarchical = posterior_variance * (raw_slope / observation_variance + prior_mean * prior_precision)
+            hierarchical_se = float(np.sqrt(posterior_variance))
+        hierarchical_se = max(hierarchical_se, 0.05)
         lower = hierarchical - 1.96 * hierarchical_se
         upper = hierarchical + 1.96 * hierarchical_se
         decline_probability = float(norm.cdf((config.material_decline_pct_per_week - hierarchical) / hierarchical_se))
-        latest = values[-1].e1rm_kg
+        comparison_count = min(config.comparison_sessions, max(len(values) // 2, 1))
+        baseline_values = values[:comparison_count]
+        latest_values = values[-comparison_count:]
+        baseline = float(np.median([item.e1rm_kg for item in baseline_values]))
+        latest = float(np.median([item.e1rm_kg for item in latest_values]))
         change_pct = (latest / baseline - 1) * 100
         bodyweight_values = [item for item in values if item.bodyweight_kg is not None]
         relative_change: float | None = None
@@ -227,6 +298,12 @@ def _exercise_results(metrics: list[SessionMetric], config: StrengthAnalysisConf
         breaks = detect_change_points([item.e1rm_kg for item in values], min_segment=3, max_change_points=2)
         if any(item.e1rm_uncertainty_pct > 12 for item in values):
             flags.add("high_e1rm_formula_uncertainty")
+        baseline_volume = float(np.mean([item.volume_kg for item in baseline_values]))
+        latest_volume = float(np.mean([item.volume_kg for item in latest_values]))
+        baseline_rpes = [item.mean_rpe for item in baseline_values if item.mean_rpe is not None]
+        latest_rpes = [item.mean_rpe for item in latest_values if item.mean_rpe is not None]
+        baseline_rpe = float(np.mean(baseline_rpes)) if baseline_rpes else None
+        latest_rpe = float(np.mean(latest_rpes)) if latest_rpes else None
         output.append(
             ExerciseStrengthResult(
                 exercise=exercise,
@@ -240,6 +317,14 @@ def _exercise_results(metrics: list[SessionMetric], config: StrengthAnalysisConf
                 slope_interval_pct_per_week=(lower, upper),
                 decline_probability=float(np.clip(decline_probability, 0, 1)),
                 relative_strength_change_pct=relative_change,
+                sessions_per_week=len(values) / max(span / 7, 1),
+                baseline_volume_kg=baseline_volume,
+                latest_volume_kg=latest_volume,
+                volume_change_pct=(latest_volume / max(baseline_volume, 1e-9) - 1) * 100,
+                baseline_mean_rpe=baseline_rpe,
+                latest_mean_rpe=latest_rpe,
+                rpe_change=(latest_rpe - baseline_rpe if baseline_rpe is not None and latest_rpe is not None else None),
+                mean_intensity_pct_e1rm=float(np.mean([item.mean_intensity_pct_e1rm for item in values])),
                 retention_score=100 + change_pct,
                 fatigue_signal=_fatigue_signal(values, config.fatigue_recent_sessions),
                 change_point_dates=[values[item.index].date for item in breaks],
@@ -251,6 +336,29 @@ def _exercise_results(metrics: list[SessionMetric], config: StrengthAnalysisConf
 
 def _week_start(day: date) -> date:
     return date.fromordinal(day.toordinal() - day.weekday())
+
+
+def _weekly_summaries(metrics: list[SessionMetric]) -> list[WeeklyTrainingSummary]:
+    grouped: dict[date, list[SessionMetric]] = defaultdict(list)
+    for item in metrics:
+        grouped[_week_start(item.date)].append(item)
+    summaries: list[WeeklyTrainingSummary] = []
+    for week, values in sorted(grouped.items()):
+        rpes = [item.mean_rpe for item in values if item.mean_rpe is not None]
+        bodyweights = [item.bodyweight_kg for item in values if item.bodyweight_kg is not None]
+        summaries.append(
+            WeeklyTrainingSummary(
+                week=week,
+                sessions=len({item.date for item in values}),
+                exercise_sessions=len(values),
+                working_sets=sum(item.working_sets for item in values),
+                volume_kg=sum(item.volume_kg for item in values),
+                mean_intensity_pct_e1rm=float(np.mean([item.mean_intensity_pct_e1rm for item in values])),
+                mean_rpe=float(np.mean(rpes)) if rpes else None,
+                median_bodyweight_kg=float(np.median(bodyweights)) if bodyweights else None,
+            )
+        )
+    return summaries
 
 
 def _pareto(metrics: list[SessionMetric]) -> list[ParetoPoint]:
@@ -342,11 +450,14 @@ def analyze_strength(
         excluded_sets=excluded,
         exercises=exercise_results,
         session_metrics=metrics,
+        weekly_summaries=_weekly_summaries(metrics),
         pareto_frontier=_pareto(metrics),
         overall_retention_score=overall,
         decision=_decision(exercise_results),
         limitations=[
             "e1RM is a formula-based estimate and becomes less stable at high repetitions.",
+            "Formula-derived e1RM uncertainty is heuristic; weighted regression does not make it calibrated.",
+            "Cross-exercise shrinkage is empirical Bayes, not a fully specified hierarchical Bayesian model.",
             "Exercise execution, equipment, range of motion, and fatigue are not fully observed.",
             "Body-weight-normalized strength is descriptive and depends on the chosen exponent.",
             "Observed decline does not identify whether energy deficit, program design, or recovery caused it.",
