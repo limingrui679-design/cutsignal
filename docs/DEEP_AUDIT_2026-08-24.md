@@ -17,8 +17,10 @@ uncertainty, sensitivity, solver quality, and privacy boundaries.
 The frozen checkout was a strong engineering alpha, but it still had two result-correctness/method
 copy mismatches, an unbounded optional API response path, no executable alternative baseline, no
 migration-shaped case, and fragmented onboarding/data documentation. The upgraded local checkout
-fixes every identified P1 and passed the complete verifier. Publication evidence remains a separate
-gate.
+fixed the original P1 set and passed the complete verifier. The first public CI run then exposed a
+new dependency-audit observability/reliability P1. Its implementation regression passed every
+implementation gate while the deliberately open finding remained the sole failed status gate; the
+finding was closed only after that evidence was recorded.
 
 ## B. Scope and inferred users
 
@@ -87,14 +89,19 @@ not copied.
 | DA-P1-013 | P1 | source records lacked explicit version/snapshot boundaries and machine validation | enrich all five records and validate roles, URLs, licenses, caveats, versions, and evidence paths | full verifier passed |
 | DA-P1-014 | P1 | scoring consumed mutable generated files and the distribution directory could expose a stale wheel | reset verifier-owned outputs, require one rebuilt wheel, bind seven artifacts by SHA-256/size, and match the installed-wheel hash | complete implementation regression and 7/7 manifest gate passed; status gate then closed |
 | DA-P1-015 | P1 | public clone/package/citation/issue/security URLs could drift after repository creation | one API-verified repository identity across six metadata and support surfaces | complete implementation regression passed; status gate then closed |
+| DA-P1-016 | P1 | Python 3.11 CI's one-shot OSV audit captured its failure output and retained artifacts only for Python 3.12 | transport-only bounded retry; vulnerability/tool failures fail immediately; direct failure tails; hash-bound audit evidence; artifact upload for every Python matrix | complete implementation regression and 8/8 manifest passed; status gate then closed |
 | DA-P2-001 | P2 | console evaluation output hid classification failures unless the JSON was opened | print accuracy/FP/FN and document 83.3% coverage plus three linked-method false negatives | full verifier passed |
 | DA-P2-002 | P2 | documented root privacy command failed on generated local evidence after verification | separate broad-walk generated/cache exclusions from exact publishable-checkout enumeration | full verifier passed |
 
 No known P0 was found, and no locally fixable P0/P1 remains open. DA-P1-014 was found during
-post-verifier manual review. With the finding still marked pending, the next complete regression
-passed every implementation check and the 7/7 artifact-manifest gate while only the audit-status
+post-verifier manual review. With the finding
+still marked pending, the next complete regression passed every implementation check and the
+then-current 7/7 artifact-manifest gate while only the audit-status
 gate failed; the finding was closed afterward. DA-P1-015 followed the same two-stage closure: the
 public-metadata regression passed every implementation gate before its status was changed.
+DA-P1-016 followed the same two-stage rule: 22 of 23 executable checks, privacy, documentation, and
+the 8/8 manifest passed while its deliberately pending audit-status gate was the only failure. It
+was then closed; targeted tests or one successful OSV request alone would not have qualified.
 
 ## F. Vertical method and case depth
 
@@ -132,24 +139,29 @@ public-metadata regression passed every implementation gate before its status wa
 
 ## H. Verification status
 
-The complete public-metadata implementation regression passed 22 of 23 executable checks plus
-privacy, required-documentation, and the 7/7 artifact-manifest gate on macOS/Python 3.12.13. The
-sole failure was the deliberately pending DA-P1-015 audit-status gate, which was closed only after
-the run. The earlier DA-P1-014 regression used the same fail-before-close pattern. The latest run
-recorded 53 passing tests, 91.3095% combined
-coverage, 93.2534% statement coverage, and 83.8150% branch-only coverage; a wheel and source
+The post-closure complete verifier passed all 23 executable checks plus privacy, required
+documentation, and the 8/8 artifact-manifest gate on macOS/Python 3.12.13. It recorded 65 passing
+tests, 91.3095% combined coverage, 93.2534% statement coverage, and 83.8150% branch-only coverage; a
+wheel and source
 distribution build; an isolated wheel install; `pip check`; OSV dependency audit with no known
 vulnerabilities found; 9/9 cases; Streamlit AppTest; and the 112-day E2E workflow. The rebuilt wheel
-hash matched the isolated-install record. The exact
-publishable checkout scan covered 104 files and returned zero privacy findings.
+hash matched the isolated-install record. The dependency-audit evidence records pip-audit 2.10.1,
+Python 3.12.13, 90 audited dependencies, one attempt, and zero reported vulnerabilities. The exact
+publishable checkout scan covered 108 files and returned zero privacy findings. A post-closure
+complete-verifier pass was recorded only after the two-stage finding closure.
 
 The 12-run synthetic grid produced linked-particle MAE 0.0557 kg/week, 83.3% interval coverage,
 Brier 0.0778, 75.0% plateau classification accuracy, and three false negatives; OLS produced MAE
 0.3324 kg/week, 66.7% coverage, Brier 0.2333, 66.7% accuracy, and four false negatives. These
 aggregates describe only the fixed internal scenario grid and are not external calibration. The
-screenshots were regenerated and visually inspected locally. The public repository identity and
-security-reporting configuration were API-verified; pushed remote SHA and terminal CI remain
-separate publication evidence and are not asserted here.
+screenshots were regenerated and visually inspected locally.
+
+The exact `63299166aee39f2251e93b395eab1ae58805ddcf` checkout was pushed and matched remote `main`.
+Its Security workflow passed, while its CI workflow failed only in the Python 3.11 exact-checkout
+step. Because the old verifier captured the audit output and uploaded artifacts only for Python
+3.12, that run did not establish whether the 3.11 failure was a vulnerability, transport failure,
+or tool failure. The remediation's post-closure local verifier is complete, but the remediated
+commit's push and replacement remote Actions are still pending.
 
 ## I. Independent score
 
@@ -170,9 +182,10 @@ separate publication evidence and are not asserted here.
 | **Total** | **100** | **73** | **87/100 local** | **+14; complete local verifier passed** |
 
 The registry `data/registry/deep_audit.yml` validates the arithmetic, evidence paths, benchmark mix,
-caps, and absence of open P0/P1. If the exact commit is pushed and required GitHub Actions reach a
-successful terminal state, reproducibility/release becomes 8/9 and the score becomes 88/100. A tag
-or README edit alone cannot raise external-validity points.
+caps, and absence of open P0/P1. If the remediated exact commit is pushed, matches remote `main`,
+and all required GitHub Actions reach a successful
+terminal state, reproducibility/release becomes 8/9 and the score becomes 88/100. A tag or README
+edit alone cannot raise external-validity points.
 
 ## J. Claim boundaries
 
@@ -191,8 +204,8 @@ deployment, outcomes, impact, or stars.
 
 ### Current locally fixable
 
-- If publication is authorized and authenticated access exists, push the exact commit and verify
-  remote SHA and terminal Actions before claiming public CI.
+- No implementation P0/P1 remains after the complete local verifier. The authorized publication
+  workflow still needs an exact-SHA push and successful terminal Actions before claiming public CI.
 
 ### P2/P3 with insufficient current cost/benefit
 

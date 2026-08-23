@@ -23,6 +23,7 @@ VERIFIER_OWNED_FILES = (
     "cases.json",
     "synthetic-evaluation.json",
     "fresh-install.json",
+    "dependency-audit.json",
     "verification.json",
     "score.json",
     "SCORECARD.md",
@@ -33,6 +34,7 @@ SCORE_CRITICAL_ARTIFACTS = {
     "cases",
     "synthetic_evaluation",
     "fresh_install",
+    "dependency_audit",
     "e2e_summary",
     "wheel",
     "source_distribution",
@@ -127,6 +129,8 @@ def _run(name: str, command: list[str], timeout: int = 180) -> dict[str, Any]:
         }
         state = "passed" if evidence["passed"] else "failed"
         print(f"[verify] {name}: {state} ({evidence['duration_seconds']}s)", flush=True)
+        if not evidence["passed"] and evidence["output_tail"]:
+            print(f"[verify] {name} output tail:\n{evidence['output_tail'][-4_000:]}", flush=True)
         return evidence
     except subprocess.TimeoutExpired as exc:
         captured = "\n".join(part for part in (_captured_text(exc.stdout), _captured_text(exc.stderr)) if part)
@@ -139,6 +143,8 @@ def _run(name: str, command: list[str], timeout: int = 180) -> dict[str, Any]:
             "output_tail": (f"timed out: {exc}\n{captured}").strip()[-12_000:],
         }
         print(f"[verify] {name}: timed out ({evidence['duration_seconds']}s)", flush=True)
+        if evidence["output_tail"]:
+            print(f"[verify] {name} output tail:\n{evidence['output_tail'][-4_000:]}", flush=True)
         return evidence
 
 
@@ -172,19 +178,8 @@ def main() -> int:
         "pip_check": _run("pip_check", [python, "-m", "pip", "check"]),
         "dependency_audit": _run(
             "dependency_audit",
-            [
-                python,
-                "-m",
-                "pip_audit",
-                "--skip-editable",
-                "--progress-spinner",
-                "off",
-                "--vulnerability-service",
-                "osv",
-                "--timeout",
-                "60",
-            ],
-            timeout=240,
+            [python, "scripts/audit_dependencies.py"],
+            timeout=300,
         ),
         "public_api": _run(
             "public_api",
@@ -345,6 +340,7 @@ def main() -> int:
         "cases": ARTIFACTS / "cases.json",
         "synthetic_evaluation": ARTIFACTS / "synthetic-evaluation.json",
         "fresh_install": ARTIFACTS / "fresh-install.json",
+        "dependency_audit": ARTIFACTS / "dependency-audit.json",
         "e2e_summary": ARTIFACTS / "e2e" / "summary.json",
     }
     wheels = sorted((ARTIFACTS / "dist").glob("cutsignal-*.whl"))

@@ -32,13 +32,14 @@ jobs:
       - name: Require full engineering score
         run: python scripts/score_project.py
       - name: Upload machine evidence
-        if: always() && matrix.python-version == '3.12'
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: cutsignal-verification
+          name: cutsignal-verification-py${{ matrix.python-version }}
           if-no-files-found: error
           path: |
             artifacts/verification.json
+            artifacts/dependency-audit.json
             artifacts/score.json
             artifacts/SCORECARD.md
             artifacts/coverage.json

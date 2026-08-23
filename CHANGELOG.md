@@ -13,6 +13,8 @@ versioning while the public API stabilizes.
   troubleshooting guide, support boundary, and `cutsignal doctor` diagnostics.
 - Verified public repository metadata, CI/security badges, typed issue routing, and confidential
   vulnerability-reporting links with a consistency gate.
+- Fail-closed OSV audit evidence with transport-only bounded retries and per-Python CI artifact
+  retention.
 - Accessible report navigation, chart descriptions, responsive labeled tables, chart titles, and
   print/mobile styles.
 
@@ -23,12 +25,14 @@ versioning while the public API stabilizes.
 - Diet stress scenarios now apply additional nutrition uncertainty as declared additive percentage
   points.
 - Food API helpers now validate path identifiers and enforce a streamed 5 MiB response limit.
+- CI now prints failed verifier output directly and preserves dependency-audit evidence for every
+  supported Python matrix.
 
 ### Security
 
 - GitHub Actions are pinned to verified full commit SHAs while Dependabot retains update coverage.
 - Verification now clears only verifier-owned outputs, rejects ambiguous wheel directories, records
-  hashes for score-critical artifacts, and refuses a score when any recorded artifact changes.
+  hashes for eight score-critical artifacts, and refuses a score when any recorded artifact changes.
 
 ## [0.2.0] - 2026-08-20
 

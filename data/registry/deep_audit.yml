@@ -10,8 +10,8 @@ baseline:
   evidence_note: Generated evidence is ignored by Git and retained locally under artifacts/deep-audit-baseline.
 current:
   score: 87
-  status: public_metadata_verifier_passed_push_pending
-  publication_state: public_remote_created_push_and_actions_pending
+  status: complete_local_verifier_passed_public_ci_remediation_push_pending
+  publication_state: public_remote_old_sha_verified_security_success_ci_failed_remediation_push_pending
   score_if_remote_sha_and_required_actions_are_verified: 88
 
 dimensions:
@@ -208,6 +208,12 @@ findings:
     summary: Once the public repository existed, clone, package, citation, issue, and confidential-security URLs could drift independently.
     resolution: Restore only API-verified public URLs and enforce one repository identity across six metadata/support surfaces under the full verifier.
     evidence: [README.md, pyproject.toml, CITATION.cff, SECURITY.md, SUPPORT.md, scripts/verify_repository_metadata.py]
+  - id: DA-P1-016
+    priority: P1
+    status: fixed_and_full_regression_verified
+    summary: Python 3.11 CI exposed a one-shot OSV audit whose captured output and single-matrix artifact upload made the failure non-diagnostic.
+    resolution: Classify vulnerability, transport, and tool failures; retry only bounded transport failures; fail closed; print failure tails; hash-bind the audit result; and upload evidence for every CI matrix.
+    evidence: [scripts/audit_dependencies.py, scripts/verify_project.py, scripts/score_project.py, tests/test_dependency_audit_script.py, .github/workflows/ci.yml, .github/workflows/security.yml]
   - id: DA-P2-001
     priority: P2
     status: fixed_and_full_regression_verified

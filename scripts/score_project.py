@@ -55,6 +55,7 @@ def main() -> int:
             "cases",
             "synthetic_evaluation",
             "fresh_install",
+            "dependency_audit",
             "e2e_summary",
             "wheel",
             "source_distribution",
@@ -197,6 +198,7 @@ def main() -> int:
                 "workflow_supply_chain",
             )
             and artifact_integrity["fresh_install"]
+            and artifact_integrity["dependency_audit"]
             and artifact_integrity["wheel"]
             and artifact_integrity["source_distribution"],
             (
