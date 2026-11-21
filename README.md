@@ -21,6 +21,8 @@ The food planner answers a practical follow-up. Given a budget and a set of nutr
 
 ![CutSignal evidence-gated analytics overview](docs/assets/cutsignal-overview.svg)
 
+On 50 public Fitabase forecasts, the benchmark compares persistence, particle estimates and an online blend that learns from each person’s past errors. [See the paired results](docs/DATA_SOURCES.md#choosing-a-forecaster-before-the-next-weigh-in).
+
 ## What it decides
 
 | Engine | Question | Method | When it stops |

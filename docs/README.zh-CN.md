@@ -50,3 +50,5 @@ cutsignal cases verify --output artifacts/cases.json
 
 方法来源、实际借用内容和不能迁移证明的边界见[方法参考与迁移边界](REFERENCES.md)。引用
 文献只说明算法家族或上游字段来源，不构成 CutSignal 的外部校准或临床验证。
+
+公开称重回放会用每个人过去的预测误差更新下一次称重的模型权重，再与固定权重及事后最佳切换作对照。50 次符合条件的记录上，在线混合与沿用上次读数的平均绝对误差分别为 0.3321 和 0.3500 千克；三人等权时，在线混合的误差反而高出 0.0232 千克。[方法与数据](DATA_SOURCES.md#choosing-a-forecaster-before-the-next-weigh-in)
