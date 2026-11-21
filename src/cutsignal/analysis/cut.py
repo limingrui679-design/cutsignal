@@ -71,8 +71,8 @@ class CutAnalysisResult(BaseModel):
     trend_interval_kg_per_week: tuple[float, float]
     plateau_probability: float
     rate_posterior_effective_sample_size: float
-    rate_posterior_distinct_ancestors: int
-    rate_posterior_ancestor_ess: float
+    rate_posterior_distinct_ancestors: int | None = None
+    rate_posterior_ancestor_ess: float | None = None
     rate_posterior_method: str
     latest_tdee_kcal: float
     latest_tdee_interval_kcal: tuple[float, float]

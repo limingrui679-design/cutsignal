@@ -162,6 +162,9 @@ def test_window_ancestry_measures_descendants_after_resampling() -> None:
     cfg = ParticleFilterConfig(particles=500, resample_ess_fraction=0.99)
     summary = run_particle_filter_diagnostics(days, cfg, rate_window_days=14).recent_rate
     assert summary.window_start == days[-15].date
+    legacy = summary.model_dump(exclude={"distinct_start_ancestors", "ancestor_effective_sample_size"})
+    assert type(summary).model_validate(legacy).ancestor_effective_sample_size is None
+    assert summary.distinct_start_ancestors is not None and summary.ancestor_effective_sample_size is not None
     assert 1 <= summary.distinct_start_ancestors < cfg.particles
     assert 1 <= summary.ancestor_effective_sample_size <= summary.distinct_start_ancestors + 1e-8
     assert summary.ancestor_effective_sample_size <= summary.effective_sample_size + 1e-8

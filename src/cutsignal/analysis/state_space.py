@@ -75,8 +75,8 @@ class RatePosteriorSummary(BaseModel):
     upper_kg_per_week: float
     plateau_probability: Annotated[float, Field(ge=0, le=1)]
     effective_sample_size: float
-    distinct_start_ancestors: int
-    ancestor_effective_sample_size: float
+    distinct_start_ancestors: int | None = None
+    ancestor_effective_sample_size: float | None = None
     method: str = "linked_particle_trajectories"
 
 
