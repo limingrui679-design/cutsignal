@@ -71,6 +71,8 @@ class CutAnalysisResult(BaseModel):
     trend_interval_kg_per_week: tuple[float, float]
     plateau_probability: float
     rate_posterior_effective_sample_size: float
+    rate_posterior_distinct_ancestors: int
+    rate_posterior_ancestor_ess: float
     rate_posterior_method: str
     latest_tdee_kcal: float
     latest_tdee_interval_kcal: tuple[float, float]
@@ -313,6 +315,8 @@ def analyze_cut(observations: list[DailyObservation], config: CutAnalysisConfig 
         trend_interval_kg_per_week=(rate_lower, rate_upper),
         plateau_probability=plateau,
         rate_posterior_effective_sample_size=rate_summary.effective_sample_size,
+        rate_posterior_distinct_ancestors=rate_summary.distinct_start_ancestors,
+        rate_posterior_ancestor_ess=rate_summary.ancestor_effective_sample_size,
         rate_posterior_method=rate_summary.method,
         latest_tdee_kcal=final.tdee_median_kcal,
         latest_tdee_interval_kcal=(final.tdee_lower_kcal, final.tdee_upper_kcal),

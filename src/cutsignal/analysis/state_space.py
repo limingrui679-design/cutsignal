@@ -7,7 +7,6 @@ uncertain. Subject-specific estimates require repeated weight and intake data.
 
 from __future__ import annotations
 
-from collections import deque
 from datetime import date, timedelta
 from typing import Annotated
 
@@ -76,6 +75,8 @@ class RatePosteriorSummary(BaseModel):
     upper_kg_per_week: float
     plateau_probability: Annotated[float, Field(ge=0, le=1)]
     effective_sample_size: float
+    distinct_start_ancestors: int
+    ancestor_effective_sample_size: float
     method: str = "linked_particle_trajectories"
 
 
@@ -176,8 +177,11 @@ def run_particle_filter_diagnostics(
     energy_density = np.clip(rng.normal(cfg.energy_density_mean, cfg.energy_density_sd, n), 4_000, 12_000)
     particle_weights = np.full(n, 1.0 / n)
     estimates: list[StateEstimate] = []
-    trend_history: deque[np.ndarray] = deque(maxlen=rate_window_days + 1)
-    history_dates: deque[date] = deque(maxlen=rate_window_days + 1)
+    # The returned posterior targets the final window only. Trace its start
+    # through resampling instead of copying every intervening particle cloud.
+    window_start = max(0, len(calendar) - 1 - rate_window_days)
+    start_trend = np.empty_like(trend)
+    ancestors = np.arange(n)
 
     for day_index, observation in enumerate(calendar):
         if day_index > 0:
@@ -227,27 +231,28 @@ def run_particle_filter_diagnostics(
                 quality_flags=flags,
             )
         )
-        trend_history.append(trend.copy())
-        history_dates.append(observation.date)
+        if day_index == window_start:
+            start_trend = trend.copy()
         if ess < cfg.resample_ess_fraction * n:
             indices = _systematic_resample(particle_weights, rng)
             trend = trend[indices]
             tdee = tdee[indices]
             fluid = fluid[indices]
             energy_density = energy_density[indices]
-            trend_history = deque(
-                (past[indices] for past in trend_history),
-                maxlen=rate_window_days + 1,
-            )
+            if day_index >= window_start:
+                ancestors = ancestors[indices]
             particle_weights.fill(1.0 / n)
 
-    elapsed = max((history_dates[-1] - history_dates[0]).days, 1)
-    rate_draws = (trend_history[-1] - trend_history[0]) * 7 / elapsed
+    elapsed = max((calendar[-1].date - calendar[window_start].date).days, 1)
+    rate_draws = (trend - start_trend[ancestors]) * 7 / elapsed
+    ancestor_mass = np.bincount(ancestors, weights=particle_weights, minlength=n)
     rate_lower, rate_median, rate_upper = _weighted_quantile(rate_draws, particle_weights)
     plateau_probability = float(np.sum(particle_weights[np.abs(rate_draws) <= plateau_band_kg_per_week]))
     recent_rate = RatePosteriorSummary(
-        window_start=history_dates[0],
-        window_end=history_dates[-1],
+        window_start=calendar[window_start].date,
+        window_end=calendar[-1].date,
+        distinct_start_ancestors=int(np.count_nonzero(ancestor_mass)),
+        ancestor_effective_sample_size=float(1.0 / np.sum(ancestor_mass**2)),
         elapsed_days=elapsed,
         median_kg_per_week=rate_median,
         lower_kg_per_week=rate_lower,
