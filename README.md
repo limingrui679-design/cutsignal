@@ -1,6 +1,6 @@
 # CutSignal
 
-**Local-first decision analytics for fat-loss trends, strength retention, and robust food planning.**
+**Read a weight trend alongside training performance and the cost of a weekly food plan.**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f.svg)](LICENSE)
@@ -8,14 +8,9 @@
 [![CI](https://github.com/limingrui679-design/cutsignal/actions/workflows/ci.yml/badge.svg)](https://github.com/limingrui679-design/cutsignal/actions/workflows/ci.yml)
 [![Security](https://github.com/limingrui679-design/cutsignal/actions/workflows/security.yml/badge.svg)](https://github.com/limingrui679-design/cutsignal/actions/workflows/security.yml)
 
-CutSignal turns noisy weight, intake, training, and food data into an evidence-gated decision:
-continue, collect more data, review recovery first, or consider reviewing the plan. It is
-device-independent after normalization, runs locally, exposes uncertainty and solver gaps, and has
-explicit reasons to abstain.
+A flat week on the scale can coincide with fluid shifts, missed weigh-ins or a change in training. CutSignal brings weigh-ins, intake and workout logs into one local analysis. A particle filter estimates the underlying weight trend, and repeated lifts provide a separate view of strength and recovery.
 
-It does **not** diagnose a plateau, choose a calorie target, recommend rapid weight loss, identify
-the cause of strength change, or replace a clinician or registered dietitian. No users, adoption,
-external review, clinical validity, or real-world impact are claimed.
+The food planner answers a practical follow-up. Given a budget and a set of nutrient targets, which weekly menus still satisfy them if prices or food composition change? It solves a constrained optimisation problem and rechecks the proposed menu under those changes. [Run the worked cases](docs/CASEBOOK.md)
 
 [中文说明](docs/README.zh-CN.md) · [Methods](docs/METHODS.md) ·
 [Method references](docs/REFERENCES.md) ·
