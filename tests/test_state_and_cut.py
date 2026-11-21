@@ -150,3 +150,37 @@ def test_cut_evidence_gates_and_outlier_exclusion() -> None:
     filtered = _hampel_weights(rows)
     assert filtered[8].weight_kg is None
     assert "weight_hampel_excluded" in filtered[8].quality_flags
+
+
+def test_window_ancestry_measures_descendants_after_resampling() -> None:
+    days = [
+        DailyObservation(
+            date=date(2025, 1, 1) + timedelta(days=i), weight_kg=80 + 0.1 * np.sin(i), energy_intake_kcal=2200
+        )
+        for i in range(30)
+    ]
+    cfg = ParticleFilterConfig(particles=500, resample_ess_fraction=0.99)
+    summary = run_particle_filter_diagnostics(days, cfg, rate_window_days=14).recent_rate
+    assert summary.window_start == days[-15].date
+    legacy = summary.model_dump(exclude={"distinct_start_ancestors", "ancestor_effective_sample_size"})
+    assert type(summary).model_validate(legacy).ancestor_effective_sample_size is None
+    assert summary.distinct_start_ancestors is not None and summary.ancestor_effective_sample_size is not None
+    assert 1 <= summary.distinct_start_ancestors < cfg.particles
+    assert 1 <= summary.ancestor_effective_sample_size <= summary.distinct_start_ancestors + 1e-8
+    assert summary.ancestor_effective_sample_size <= summary.effective_sample_size + 1e-8
+
+
+def test_scale_prior_is_computed_before_seeing_the_current_weight():
+    from datetime import date, timedelta
+
+    from cutsignal.analysis.state_space import run_particle_filter
+    from cutsignal.models import DailyObservation
+
+    def predict(last):
+        rows = [
+            DailyObservation(date=date(2025, 1, 1) + timedelta(days=i), weight_kg=w)
+            for i, w in enumerate([80, 80.2, 79.9, last])
+        ]
+        return run_particle_filter(rows, ParticleFilterConfig(particles=500))[-1].prior_scale_weight_median_kg
+
+    assert predict(79) == predict(85)

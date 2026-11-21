@@ -332,3 +332,9 @@ endorse or sponsor CutSignal.
 
 CutSignal code is MIT-licensed. Third-party datasets retain their own licenses and are not
 redistributed unless the source registry explicitly permits it.
+
+### Particle ancestry in the trend estimate
+
+The recent slope follows particles back to the start of the final analysis window. The filter stores one anchor cloud and one ancestor index per particle, independent of the window length. The JSON report includes the number of distinct starting ancestors and their effective sample size. Many descendants can share a single ancestor even when the final-day weights look well balanced. These quantities describe Monte Carlo support for the trend estimate.
+
+On the seeded 112-day demo (`generate_daily_demo`, 1,500 particles), the final 90-day window contained six distinct starting ancestors, with ancestry ESS 3.89; endpoint ESS after resampling was 1,500. Comparing this implementation with the prior filter gave identical original summary fields and daily estimates for 7-, 28- and 90-day windows. These are simulation diagnostics.
