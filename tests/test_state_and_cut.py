@@ -168,3 +168,19 @@ def test_window_ancestry_measures_descendants_after_resampling() -> None:
     assert 1 <= summary.distinct_start_ancestors < cfg.particles
     assert 1 <= summary.ancestor_effective_sample_size <= summary.distinct_start_ancestors + 1e-8
     assert summary.ancestor_effective_sample_size <= summary.effective_sample_size + 1e-8
+
+
+def test_scale_prior_is_computed_before_seeing_the_current_weight():
+    from datetime import date, timedelta
+
+    from cutsignal.analysis.state_space import run_particle_filter
+    from cutsignal.models import DailyObservation
+
+    def predict(last):
+        rows = [
+            DailyObservation(date=date(2025, 1, 1) + timedelta(days=i), weight_kg=w)
+            for i, w in enumerate([80, 80.2, 79.9, last])
+        ]
+        return run_particle_filter(rows, ParticleFilterConfig(particles=500))[-1].prior_scale_weight_median_kg
+
+    assert predict(79) == predict(85)

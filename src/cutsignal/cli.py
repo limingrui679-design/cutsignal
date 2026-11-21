@@ -332,6 +332,14 @@ def privacy_audit(
         raise typer.Exit(code=1)
 
 
+@app.command("benchmark-weight")
+def benchmark_weight(csv_path: Annotated[Path, typer.Argument(exists=True, dir_okay=False)]) -> None:
+    """Compare pre-observation scale predictions with carrying the last measured weight forward."""
+    from cutsignal.weight_benchmark import compare_weigh_ins
+
+    typer.echo(json.dumps(compare_weigh_ins(csv_path), indent=2))
+
+
 @app.command()
 def ui(
     port: Annotated[int, typer.Option(min=1_024, max=65_535)] = 8_501,

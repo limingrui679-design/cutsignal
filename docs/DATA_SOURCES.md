@@ -50,3 +50,9 @@ Future external validation can use controlled wearable-energy/heart-rate studies
 surveys, but licensing, participant-level privacy, device placement, and ground-truth definitions
 must be reviewed separately. A public filename or download button is not sufficient permission to
 redistribute participant data.
+
+### Real weigh-in forecast check
+
+Furberg, Brinton, Keating and colleagues published the Fitabase MTurk exports on [Zenodo](https://zenodo.org/records/53894) under CC BY 4.0. The April 12–May 12 archive has MD5 `7afbecdce29814e1be2e9a7c94f8f165`. Extract its `weightLogInfo_merged.csv` locally and run `cutsignal benchmark-weight weightLogInfo_merged.csv`. The command combines same-day entries by median and starts a new history after a gap above seven days. Starting with the fourth qualifying date, it scores the scale-weight prediction made before that day's measurement against the last observed weight.
+
+Of 67 records from eight people, 50 weigh-ins from three people qualified. Pooled MAE was 0.328 kg for the particle prediction and 0.350 kg for persistence. Giving each person equal weight instead favoured persistence by 0.056 kg. The target is the next observed scale reading. The study supplies no independent fat-mass trajectory or energy-expenditure truth. Only aggregates are reported.

@@ -52,6 +52,7 @@ class StateEstimate(BaseModel):
     date: date
     observed_weight_kg: float | None
     energy_intake_kcal: float | None
+    prior_scale_weight_median_kg: float | None = None
     trend_weight_median_kg: float
     trend_weight_lower_kg: float
     trend_weight_upper_kg: float
@@ -198,6 +199,10 @@ def run_particle_filter_diagnostics(
             else:
                 trend += rng.normal(0.0, cfg.missing_intake_process_sd_kg, n)
 
+        # Prior to this day's scale measurement; the initial weight seeded the particles.
+        prior_weight = None
+        if observation.weight_kg is not None and observation.date > weights_present[0].date:
+            _, prior_weight, _ = _weighted_quantile(trend + fluid, particle_weights)
         flags = set(observation.quality_flags)
         if observation.weight_kg is not None:
             residual = observation.weight_kg - (trend + fluid)
@@ -221,6 +226,7 @@ def run_particle_filter_diagnostics(
                 date=observation.date,
                 observed_weight_kg=observation.weight_kg,
                 energy_intake_kcal=observation.energy_intake_kcal,
+                prior_scale_weight_median_kg=prior_weight,
                 trend_weight_median_kg=weight_median,
                 trend_weight_lower_kg=weight_lower,
                 trend_weight_upper_kg=weight_upper,
